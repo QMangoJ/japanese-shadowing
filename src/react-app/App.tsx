@@ -502,6 +502,11 @@ function App() {
 						</div>
 					</article>
 
+					<div className="mobile-now-playing" aria-label="当前播放文案" aria-live="polite">
+						<div className="mobile-now-copy"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
+						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button onClick={() => setShowTranscript(true)}>全文</button></div>
+					</div>
+
 				</section>
 
 				{current.hasBookText && <section className="source-card" aria-label="源书对话与翻译">
@@ -550,10 +555,6 @@ function App() {
 			</main>
 
 			{screen === "practice" && <>
-				<div className="mobile-now-playing" aria-label="当前播放文案">
-					<div className="mobile-now-copy"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
-					<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button onClick={() => setShowTranscript(true)}>全文</button></div>
-				</div>
 				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本">
 					<div className="sheet-panel"><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button onClick={() => setShowTranscript(false)} aria-label="关闭全文">×</button></div>
 						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
