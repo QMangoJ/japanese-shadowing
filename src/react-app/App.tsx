@@ -14,6 +14,7 @@ type Transcript = { jp: string[]; zh: string[]; en: string[] };
 type CourseId = "beginner" | "intermediate";
 type Course = { title: string; units: Unit[]; lessons: PracticeItem[]; trackAudio: boolean };
 type SavedProgress = { courseId: CourseId; currentIndex: number; currentSentence: number; currentTime: number };
+type FavoritePosition = { left: number; top: number; placement: "above" | "below" };
 type Favorite = {
 	id: string;
 	text: string;
@@ -219,10 +220,10 @@ function FuriganaText({ text }: { text: string }) {
 	})}</>;
 }
 
-function SelectionFavoriteAction({ selectedText, notice, onSave }: { selectedText: string; notice: string; onSave: () => void }) {
-	if (!selectedText && !notice) return null;
-	return <div className="selection-favorite-action" aria-live="polite">
-		{selectedText ? <><span>已选：{selectedText}</span><button type="button" onClick={onSave}>收藏</button></> : <span>{notice}</span>}
+function FloatingFavoriteAction({ selectedText, notice, position, onSave }: { selectedText: string; notice: string; position: FavoritePosition | null; onSave: () => void }) {
+	if ((!selectedText && !notice) || !position) return null;
+	return <div className={`floating-favorite-action ${position.placement}`} style={{ left: position.left, top: position.top }} aria-live="polite">
+		{selectedText ? <><span>收藏所选内容</span><button type="button" onClick={onSave}>收藏</button></> : <span>{notice}</span>}
 	</div>;
 }
 
@@ -250,6 +251,7 @@ function App() {
 	const [selectedText, setSelectedText] = useState("");
 	const [selectedSentence, setSelectedSentence] = useState(initialProgress.currentSentence);
 	const [favoriteNotice, setFavoriteNotice] = useState("");
+	const [favoritePosition, setFavoritePosition] = useState<FavoritePosition | null>(null);
 
 	const course = courses[courseId];
 	const lessons = course.lessons;
@@ -312,6 +314,16 @@ function App() {
 			fragment.querySelectorAll("rt, rp").forEach((reading) => reading.remove());
 			const text = (fragment.textContent ?? selection.toString()).replace(/\s+/g, " ").trim();
 			if (!text) return;
+			const range = selection.getRangeAt(0);
+			const rects = range.getClientRects();
+			const rect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect();
+			if (rect.width === 0 && rect.height === 0) return;
+			const placement = rect.top > 58 ? "above" : "below";
+			setFavoritePosition({
+				left: Math.max(84, Math.min(rect.left + rect.width / 2, window.innerWidth - 84)),
+				top: placement === "above" ? rect.top - 8 : rect.bottom + 8,
+				placement,
+			});
 			setSelectedText(text);
 			const sentence = Number(transcriptElement.closest<HTMLElement>("[data-sentence]")?.dataset.sentence);
 			setSelectedSentence(Number.isInteger(sentence) && sentence > 0 ? sentence : currentSentence);
@@ -322,7 +334,10 @@ function App() {
 
 	useEffect(() => {
 		if (!favoriteNotice) return;
-		const timeout = window.setTimeout(() => setFavoriteNotice(""), 2200);
+		const timeout = window.setTimeout(() => {
+			setFavoriteNotice("");
+			setFavoritePosition(null);
+		}, 2200);
 		return () => window.clearTimeout(timeout);
 	}, [favoriteNotice]);
 
@@ -406,6 +421,7 @@ function App() {
 		window.getSelection()?.removeAllRanges();
 		setSelectedText("");
 		setFavoriteNotice("");
+		setFavoritePosition(null);
 	}
 
 	function seekTo(value: number) {
@@ -637,7 +653,6 @@ function App() {
 						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
 						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" onClick={() => { setSelectedText(""); setShowTranscript(true); }}>全文</button></div>
 					</div>
-					<div className="mobile-selection-favorite"><SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} /></div>
 
 				</section>
 
@@ -679,7 +694,6 @@ function App() {
 							<div className="transcript-text selectable-transcript">
 								<p className="japanese-text"><FuriganaText text={japanese} /></p>
 								<p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>
-								{selectedText && selectedSentence === index + 1 && <SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />}
 							</div>
 						</article>)}
 					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
@@ -691,10 +705,11 @@ function App() {
 			{screen === "practice" && <>
 				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本" onClick={(event) => { if (event.target === event.currentTarget) setShowTranscript(false); }}>
 					<div className="sheet-panel" onClick={(event) => event.stopPropagation()}><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button type="button" className="sheet-close" onClick={() => setShowTranscript(false)} aria-label="关闭全文">关闭</button></div>
-						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>{selectedText && selectedSentence === index + 1 && <SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />}</div></article>)}</div>
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
 					</div>
 				</div>}
 			</>}
+			<FloatingFavoriteAction selectedText={selectedText} notice={favoriteNotice} position={favoritePosition} onSave={saveSelectedText} />
 
 			<footer>© 2026 日本語Shadowing · 日语 Shadowing 练习</footer>
 			<audio
