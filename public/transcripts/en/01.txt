@@ -1,0 +1,25 @@
+A: Do you mean this （
+B: Yes, that one.
+A: Um, which one? TI
+B: Yeah, that one.
+3
+A: Is it delicious？
+B: Yeah, it's delicious
+4
+A: Is it good？
+B: Yes, it's good.
+5
+A: Is it pretty？
+B: Yeah, it's pretty.
+6
+A: Is that true？
+B: Yes, it's true.
+Z A: Ms. Ohno？
+B: Yes, I'm Ohno.
+8
+A: Is it OK？
+B: Yeah, it's fine.
+9 A: Is here OK？
+B: Yes, there's fine.
+10 A: Got it？
+B: Yes, I understand.
