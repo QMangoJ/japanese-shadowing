@@ -89,6 +89,17 @@ function readSavedProgress(): SavedProgress {
 
 const speeds = [0.75, 1, 1.25, 1.5];
 
+const dialogueLineCounts: Record<number, number[]> = {
+	4: [2, 2, 2, 2, 2, 2, 4, 2, 2, 2],
+	10: [4, 4, 4, 4, 4, 4],
+	19: [4, 4, 4, 4, 4, 4],
+	25: [2, 2, 2, 2, 2, 2, 2, 3, 2, 2],
+	40: [4, 4, 4, 4, 4, 5],
+	43: [4, 4, 4, 4, 4, 4],
+	45: [4, 4, 4, 4, 4, 5],
+	47: [4, 4, 4, 4, 4, 4],
+};
+
 function formatTime(seconds: number) {
 	if (!Number.isFinite(seconds)) return "0:00";
 	const minutes = Math.floor(seconds / 60);
@@ -104,8 +115,15 @@ function extractSpokenLines(raw: string, attachReadings = false) {
 		const match = line.match(/([AB])\s*[:：]\s*(.*)$/i);
 		if (match) {
 			const text = match[2].trim();
-			if (text) spoken.push(`${match[1].toUpperCase()}: ${text.replace(/太野/g, "大野")}`);
+			if (text) {
+				pendingSpeaker = null;
+				spoken.push(`${match[1].toUpperCase()}: ${text.replace(/太野/g, "大野")}`);
+			}
 			else pendingSpeaker = match[1].toUpperCase();
+			continue;
+		}
+		if (/^[AB]$/i.test(line)) {
+			pendingSpeaker = line.toUpperCase();
 			continue;
 		}
 		if (pendingSpeaker && line) {
@@ -113,22 +131,51 @@ function extractSpokenLines(raw: string, attachReadings = false) {
 			pendingSpeaker = null;
 			continue;
 		}
+		const missingA = line.match(/^[:：]\s*(.+)$/);
+		const malformedB = line.match(/^(?:[2２]日|日)\s*[:：]\s*(.+)$/);
+		if ((malformedB && spoken.length > 0) || (missingA && (spoken.length > 0 || /[ぁ-んァ-ン一-龯]/.test(missingA[1])))) {
+			spoken.push(`${missingA ? "A" : "B"}: ${(missingA?.[1] ?? malformedB?.[1] ?? "").trim().replace(/太野/g, "大野")}`);
+			continue;
+		}
 		if (attachReadings && spoken.length > 0 && /^[ぁ-ゖァ-ヺー・]+$/.test(line)) {
 			spoken[spoken.length - 1] += `（${line}）`;
+			continue;
+		}
+		if (spoken.length > 0 && line && !/^(?:Unit|section|[0-9①-⑳]+|[（(].*[）)])$/.test(line)) {
+			spoken[spoken.length - 1] += `\n${line}`;
 		}
 	}
 	return spoken;
 }
 
-function groupSentences(lines: string[], sentenceCount: number) {
-	const linesPerSentence = lines.length / sentenceCount;
-	if (!Number.isInteger(linesPerSentence) || linesPerSentence < 2) {
+function groupSentences(lines: string[], sentenceCount: number, sectionIndex: number) {
+	const override = dialogueLineCounts[sectionIndex];
+	const baseSize = Math.floor(lines.length / sentenceCount);
+	const remainder = lines.length % sentenceCount;
+	const groupSizes = override?.reduce((total, size) => total + size, 0) === lines.length ? override : (baseSize > 0
+		? Array.from({ length: sentenceCount }, (_, index) => baseSize + (index < remainder ? 1 : 0))
+		: null);
+	if (!groupSizes || groupSizes.reduce((total, size) => total + size, 0) !== lines.length) {
 		return Array.from({ length: sentenceCount }, () => "文本待校对");
 	}
-	return Array.from({ length: sentenceCount }, (_, index) => {
-		const dialogue = lines.slice(index * linesPerSentence, (index + 1) * linesPerSentence);
+	let offset = 0;
+	return groupSizes.map((size) => {
+		const dialogue = lines.slice(offset, offset + size);
+		offset += size;
 		return dialogue.length > 0 ? dialogue.join("\n") : "文本待校对";
 	});
+}
+
+function groupNarratives(raw: string, sectionIndex: number) {
+	const headingPatterns = sectionIndex === 55
+		? [/^（(?:意見|Stating|意见)/, /^（(?:面接|At an Interview|面试)/]
+		: [/^（(?:旅先|What Happened|在旅行)/, /^（(?:映画|Impression|电影)/];
+	const lines = raw.split("\n").map((line) => line.trim());
+	const starts = headingPatterns.map((pattern) => lines.findIndex((line) => pattern.test(line)));
+	if (starts.some((start) => start < 0)) return ["文本待校对", "文本待校对"];
+	return starts.map((start, index) => lines.slice(start, starts[index + 1] ?? lines.length)
+		.filter((line) => line && !/^[ぁ-ゖァ-ヺー・]+$/.test(line) && !/^(?:Unit|section|[0-9①-⑳]+)$/.test(line))
+		.join("\n"));
 }
 
 function FuriganaText({ text }: { text: string }) {
@@ -221,14 +268,11 @@ function App() {
 				const japaneseLines = extractSpokenLines(jp, true);
 				const chineseLines = extractSpokenLines(zh);
 				const englishLines = extractSpokenLines(en);
-				const hasReliableGroups = [japaneseLines, chineseLines, englishLines].every((lines) =>
-					lines.length >= current.sentenceCount * 2 && Number.isInteger(lines.length / current.sentenceCount),
-				);
-				const placeholders = Array.from({ length: current.sentenceCount }, () => "文本待校对");
+				const isNarrative = !course.trackAudio && current.index >= 55;
 				setTranscript({
-					jp: course.trackAudio ? [jp] : hasReliableGroups ? groupSentences(japaneseLines, current.sentenceCount) : placeholders,
-					zh: course.trackAudio ? [zh] : hasReliableGroups ? groupSentences(chineseLines, current.sentenceCount) : placeholders,
-					en: course.trackAudio ? [en] : hasReliableGroups ? groupSentences(englishLines, current.sentenceCount) : placeholders,
+					jp: course.trackAudio ? [jp] : isNarrative ? groupNarratives(jp, current.index) : groupSentences(japaneseLines, current.sentenceCount, current.index),
+					zh: course.trackAudio ? [zh] : isNarrative ? groupNarratives(zh, current.index) : groupSentences(chineseLines, current.sentenceCount, current.index),
+					en: course.trackAudio ? [en] : isNarrative ? groupNarratives(en, current.index) : groupSentences(englishLines, current.sentenceCount, current.index),
 				});
 			})
 			.catch(() => { if (!disposed) setTranscript(null); });
