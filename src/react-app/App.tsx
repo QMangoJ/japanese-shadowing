@@ -207,7 +207,6 @@ function App() {
 	const [translation, setTranslation] = useState<"zh" | "en">("zh");
 	const playAfterChangeRef = useRef(false);
 	const [playRequest, setPlayRequest] = useState(0);
-	const [playWholeSection, setPlayWholeSection] = useState(false);
 	const [selectedUnit, setSelectedUnit] = useState(() => courses[initialProgress.courseId].units.find((item) => initialProgress.currentIndex + 1 >= item.start && initialProgress.currentIndex + 1 <= item.end)?.number ?? 1);
 	const [query, setQuery] = useState("");
 	const [transcript, setTranscript] = useState<Transcript | null>(null);
@@ -336,7 +335,6 @@ function App() {
 		setCurrentSentence(1);
 		const parentUnit = units.find((item) => index + 1 >= item.start && index + 1 <= item.end);
 		if (parentUnit) setSelectedUnit(parentUnit.number);
-		setPlayWholeSection(true);
 		requestPlayback();
 		setShowTranscript(false);
 	}
@@ -352,7 +350,6 @@ function App() {
 		setCurrentSentence(1);
 		setSelectedUnit(1);
 		setQuery("");
-		setPlayWholeSection(false);
 		setIsPlaying(false);
 		setShowTranscript(false);
 	}
@@ -362,7 +359,6 @@ function App() {
 		setCurrentTime(0);
 		setDuration(0);
 		setCurrentSentence(sentence);
-		setPlayWholeSection(false);
 		requestPlayback();
 	}
 
@@ -393,7 +389,6 @@ function App() {
 		setCurrentTime(0);
 		setDuration(0);
 		setTranscript(null);
-		setPlayWholeSection(false);
 		requestPlayback();
 		const parentUnit = units.find((item) => nextLesson.index >= item.start && nextLesson.index <= item.end);
 		if (parentUnit) setSelectedUnit(parentUnit.number);
@@ -412,7 +407,7 @@ function App() {
 
 	function handleEnded() {
 		if (loop) return;
-		if (playWholeSection && currentSentence < current.sentenceCount) {
+		if (currentSentence < current.sentenceCount) {
 			setCurrentSentence((sentence) => sentence + 1);
 			setCurrentTime(0);
 			setDuration(0);
@@ -420,7 +415,6 @@ function App() {
 			return;
 		}
 		setIsPlaying(false);
-		setPlayWholeSection(false);
 	}
 
 	return (
@@ -467,7 +461,7 @@ function App() {
 
 						<div className="now-playing-preview" aria-live="polite">
 							<p className="now-playing-japanese"><FuriganaText text={nowPlayingText} /></p>
-							<p className="now-playing-translation"><small>{translation === "zh" ? "中文" : "EN"}</small>{nowPlayingTranslation}</p>
+							<p className="now-playing-translation">{nowPlayingTranslation}</p>
 						</div>
 
 						<div className="waveform" aria-hidden="true">
@@ -525,7 +519,7 @@ function App() {
 							</button>
 							<div className="transcript-text">
 								<p className="japanese-text"><FuriganaText text={japanese} /></p>
-								<p className="translation-text"><small>{translation === "zh" ? "中文" : "EN"}</small>{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>
+								<p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>
 							</div>
 						</article>)}
 					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
@@ -562,7 +556,7 @@ function App() {
 				</div>
 				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本">
 					<div className="sheet-panel"><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button onClick={() => setShowTranscript(false)} aria-label="关闭全文">×</button></div>
-						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text"><small>{translation === "zh" ? "中文" : "EN"}</small>{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
 					</div>
 				</div>}
 			</>}
