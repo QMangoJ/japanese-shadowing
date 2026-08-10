@@ -222,7 +222,7 @@ function FuriganaText({ text }: { text: string }) {
 function SelectionFavoriteAction({ selectedText, notice, onSave }: { selectedText: string; notice: string; onSave: () => void }) {
 	if (!selectedText && !notice) return null;
 	return <div className="selection-favorite-action" aria-live="polite">
-		{selectedText ? <><span>已选：{selectedText}</span><button type="button" onPointerDown={(event) => event.preventDefault()} onClick={onSave}>收藏</button></> : <span>{notice}</span>}
+		{selectedText ? <><span>已选：{selectedText}</span><button type="button" onClick={onSave}>收藏</button></> : <span>{notice}</span>}
 	</div>;
 }
 
@@ -300,19 +300,18 @@ function App() {
 		const onSelectionChange = () => {
 			const selection = window.getSelection();
 			if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-				setSelectedText("");
 				return;
 			}
 			const anchor = selection.anchorNode;
 			const element = anchor instanceof Element ? anchor : anchor?.parentElement;
 			const transcriptElement = element?.closest<HTMLElement>(".selectable-transcript");
 			if (!transcriptElement) {
-				setSelectedText("");
 				return;
 			}
 			const fragment = selection.getRangeAt(0).cloneContents();
 			fragment.querySelectorAll("rt, rp").forEach((reading) => reading.remove());
 			const text = (fragment.textContent ?? selection.toString()).replace(/\s+/g, " ").trim();
+			if (!text) return;
 			setSelectedText(text);
 			const sentence = Number(transcriptElement.closest<HTMLElement>("[data-sentence]")?.dataset.sentence);
 			setSelectedSentence(Number.isInteger(sentence) && sentence > 0 ? sentence : currentSentence);
@@ -638,6 +637,7 @@ function App() {
 						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
 						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" onClick={() => { setSelectedText(""); setShowTranscript(true); }}>全文</button></div>
 					</div>
+					<div className="mobile-selection-favorite"><SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} /></div>
 
 				</section>
 
@@ -671,7 +671,6 @@ function App() {
 							<button className={translation === "en" ? "selected" : ""} onClick={() => setTranslation("en")}>English</button>
 						</div>
 					</div>
-					<SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />
 					{transcript ? <div className="transcript-list">
 						{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
 							<button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => toggleSentencePlayback(index + 1)} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}>
@@ -680,6 +679,7 @@ function App() {
 							<div className="transcript-text selectable-transcript">
 								<p className="japanese-text"><FuriganaText text={japanese} /></p>
 								<p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>
+								{selectedText && selectedSentence === index + 1 && <SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />}
 							</div>
 						</article>)}
 					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
@@ -691,8 +691,7 @@ function App() {
 			{screen === "practice" && <>
 				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本" onClick={(event) => { if (event.target === event.currentTarget) setShowTranscript(false); }}>
 					<div className="sheet-panel" onClick={(event) => event.stopPropagation()}><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button type="button" className="sheet-close" onClick={() => setShowTranscript(false)} aria-label="关闭全文">关闭</button></div>
-						<SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />
-						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>{selectedText && selectedSentence === index + 1 && <SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />}</div></article>)}</div>
 					</div>
 				</div>}
 			</>}
