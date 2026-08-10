@@ -252,9 +252,25 @@ function App() {
 		setPlayAfterChange(true);
 	}
 
-	function moveLesson(direction: -1 | 1) {
-		const next = (currentIndex + direction + lessons.length) % lessons.length;
-		selectLesson(next);
+	function moveSentence(direction: -1 | 1) {
+		if (direction === -1 && currentSentence > 1) {
+			playSentence(currentSentence - 1);
+			return;
+		}
+		if (direction === 1 && currentSentence < current.sentenceCount) {
+			playSentence(currentSentence + 1);
+			return;
+		}
+
+		const nextIndex = (currentIndex + direction + lessons.length) % lessons.length;
+		const nextLesson = lessons[nextIndex];
+		const nextSentence = direction === -1 ? nextLesson.sentenceCount : 1;
+		setCurrentIndex(nextIndex);
+		setCurrentSentence(nextSentence);
+		setPlayWholeSection(false);
+		setPlayAfterChange(true);
+		const parentUnit = units.find((item) => nextLesson.index >= item.start && nextLesson.index <= item.end);
+		if (parentUnit) setSelectedUnit(parentUnit.number);
 	}
 
 	function handleEnded() {
@@ -334,11 +350,11 @@ function App() {
 						</div>
 
 						<div className="transport" aria-label="播放控制">
-							<button className="round-button" onClick={() => moveLesson(-1)} aria-label="上一句">↶</button>
+							<button className="round-button" onClick={() => moveSentence(-1)} aria-label="上一句">↶</button>
 							<button className="play-button" onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>
 								{isPlaying ? "Ⅱ" : "▶"}
 							</button>
-							<button className="round-button" onClick={() => moveLesson(1)} aria-label="下一句">↷</button>
+							<button className="round-button" onClick={() => moveSentence(1)} aria-label="下一句">↷</button>
 						</div>
 
 						<div className="player-options">
