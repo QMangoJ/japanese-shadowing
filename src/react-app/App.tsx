@@ -487,7 +487,7 @@ function App() {
 					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
 				</section>}
 
-				<section className="library section-library" id="practice-list" onWheel={(event) => event.preventDefault()} onTouchMove={(event) => event.preventDefault()}>
+				<section className="library" id="practice-list">
 					<div className="library-header">
 						<div><p className="eyebrow">课程单元</p><h2>选择一个 section</h2></div>
 						<label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索编号" aria-label="搜索练习编号" /></label>
