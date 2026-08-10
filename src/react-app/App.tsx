@@ -129,6 +129,8 @@ function App() {
 	const [selectedUnit, setSelectedUnit] = useState(1);
 	const [query, setQuery] = useState("");
 	const [transcript, setTranscript] = useState<Transcript | null>(null);
+	const [screen, setScreen] = useState<"practice" | "guide">("practice");
+	const [showTranscript, setShowTranscript] = useState(false);
 
 	const course = courses[courseId];
 	const lessons = course.lessons;
@@ -138,6 +140,8 @@ function App() {
 		? `/audio-intermediate/${String(current.index).padStart(2, "0")}.mp3`
 		: `/audio/${String(current.index).padStart(2, "0")}-${currentSentence}.mp3`;
 	const unit = units.find((item) => item.number === selectedUnit) ?? units[0];
+	const nowPlayingText = transcript?.jp[currentSentence - 1] ?? "正在加载当前文案…";
+	const nowPlayingTranslation = transcript ? (translation === "zh" ? transcript.zh[currentSentence - 1] : transcript.en[currentSentence - 1]) : "";
 	const filteredLessons = useMemo(() => {
 		const normalizedQuery = query.trim().toLowerCase();
 		return lessons.filter((lesson) => {
@@ -227,6 +231,7 @@ function App() {
 		if (parentUnit) setSelectedUnit(parentUnit.number);
 		setPlayWholeSection(true);
 		setPlayAfterChange(true);
+		setShowTranscript(false);
 	}
 
 	function selectCourse(nextCourse: CourseId) {
@@ -238,6 +243,7 @@ function App() {
 		setQuery("");
 		setPlayWholeSection(false);
 		setIsPlaying(false);
+		setShowTranscript(false);
 	}
 
 	function playSentence(sentence: number) {
@@ -266,14 +272,25 @@ function App() {
 		<div className="app-shell">
 			<a className="skip-link" href="#practice-list">跳到练习列表</a>
 			<header className="topbar">
-				<a className="brand" href="#top" aria-label="KAGEKOE 首页">
+				<button className="brand" onClick={() => setScreen("practice")} aria-label="KAGEKOE 首页">
 					<span className="brand-mark">声</span>
 					<span>KAGEKOE</span>
-				</a>
-				<div className="topbar-note"><span className="pulse-dot" />Shadowing practice</div>
+				</button>
+				<button className="guide-link" onClick={() => setScreen("guide")}>使用方法</button>
 			</header>
 
 			<main id="top">
+				{screen === "guide" ? <section className="guide-page">
+					<p className="eyebrow">Shadowing guide</p>
+					<h1>练得短，<br /><em>但练得准。</em></h1>
+					<p className="hero-copy">每次用 10 分钟，选择一段音频，先听再跟读。不要等到每个词都懂才开口。</p>
+					<ol className="guide-steps">
+						<li><span>01</span><div><strong>先听一遍</strong><p>不看文字，感受节奏、重音和停顿。</p></div></li>
+						<li><span>02</span><div><strong>立即跟读</strong><p>让自己的声音比原声慢半拍；跟不上就从下一句继续。</p></div></li>
+						<li><span>03</span><div><strong>循环打磨</strong><p>对难句打开循环，先稳定节奏，再追求自然。</p></div></li>
+					</ol>
+					<button className="back-to-practice" onClick={() => setScreen("practice")}>返回练习</button>
+				</section> : <>
 				<section className="hero">
 					<div>
 						<p className="eyebrow">日语跟读练习</p>
@@ -282,7 +299,7 @@ function App() {
 					</div>
 					<div className="hero-card" aria-label="今日练习提示">
 							<span>课程结构</span>
-							<strong>6 个单元</strong>
+							<strong>{course.units.length} 个单元</strong>
 							<p>{course.trackAudio ? "74 段音频，8 个单元，包含日中英可选择文本。" : "56 个 section，包含日语原文、振假名、中文与英文翻译。"}</p>
 					</div>
 				</section>
@@ -300,12 +317,12 @@ function App() {
 						<div className="player-heading">
 							<div>
 								<p className="eyebrow">正在练习</p>
-								<h2>{current.label} · 第 {currentSentence} 句</h2>
+								<h2>{current.label}{course.trackAudio ? " · 整段练习" : ` · 第 ${currentSentence} 句`}</h2>
 							</div>
 							<span className="level-badge">音频 {String(current.index).padStart(2, "0")}</span>
 						</div>
 
-						<p className="sentence-placeholder">点击 section 卡片即可从第 1 句连续播放；点击下方原文句块，则播放该句的对应 MP3。</p>
+						<p className="sentence-placeholder">{course.trackAudio ? "点击 Track 播放书中对应整段音频；下方可查看同页的日中英文本。" : "点击 section 卡片即可从第 1 句连续播放；点击下方原文句块，则播放该句的对应 MP3。"}</p>
 
 						<div className="waveform" aria-hidden="true">
 							{Array.from({ length: 42 }, (_, index) => <i key={index} style={{ height: `${18 + ((index * 31) % 60)}%` }} />)}
@@ -345,14 +362,6 @@ function App() {
 						</div>
 					</article>
 
-					<aside className="how-to-card">
-						<p className="eyebrow">怎么练</p>
-						<ol>
-							<li><span>01</span><div><strong>先听</strong><p>不看文字，捕捉语调。</p></div></li>
-							<li><span>02</span><div><strong>紧跟</strong><p>比原声慢半拍开口。</p></div></li>
-							<li><span>03</span><div><strong>重复</strong><p>打开循环，直到顺畅。</p></div></li>
-						</ol>
-					</aside>
 				</section>
 
 				{current.hasBookText && <section className="source-card" aria-label="源书对话与翻译">
@@ -396,7 +405,20 @@ function App() {
 					</div>
 					{filteredLessons.length === 0 && <p className="empty-state">没有匹配的练习，请换一个编号试试。</p>}
 				</section>
+				</>}
 			</main>
+
+			{screen === "practice" && <>
+				<div className="mobile-now-playing" aria-label="当前播放文案">
+					<div className="mobile-now-copy"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
+					<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button onClick={() => setShowTranscript(true)}>全文</button></div>
+				</div>
+				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本">
+					<div className="sheet-panel"><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button onClick={() => setShowTranscript(false)} aria-label="关闭全文">×</button></div>
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className="transcript-row"><button className="sentence-play-button" onClick={() => { playSentence(index + 1); setShowTranscript(false); }}><span>{String(index + 1).padStart(2, "0")}</span><b>▶</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text"><small>{translation === "zh" ? "中文" : "EN"}</small>{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
+					</div>
+				</div>}
+			</>}
 
 			<footer>© 2026 KAGEKOE · 日语 Shadowing 练习</footer>
 			<audio
