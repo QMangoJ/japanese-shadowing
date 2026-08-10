@@ -113,9 +113,13 @@ function extractSpokenLines(raw: string, attachReadings = false) {
 }
 
 function groupSentences(lines: string[], sentenceCount: number) {
+	const linesPerSentence = lines.length / sentenceCount;
+	if (!Number.isInteger(linesPerSentence) || linesPerSentence < 2) {
+		return Array.from({ length: sentenceCount }, () => "文本待校对");
+	}
 	return Array.from({ length: sentenceCount }, (_, index) => {
-		const pair = lines.slice(index * 2, index * 2 + 2);
-		return pair.length > 0 ? pair.join("\n") : "识别文本待校对";
+		const dialogue = lines.slice(index * linesPerSentence, (index + 1) * linesPerSentence);
+		return dialogue.length > 0 ? dialogue.join("\n") : "文本待校对";
 	});
 }
 
@@ -146,7 +150,8 @@ function App() {
 	const [speed, setSpeed] = useState(1);
 	const [loop, setLoop] = useState(false);
 	const [translation, setTranslation] = useState<"zh" | "en">("zh");
-	const [playAfterChange, setPlayAfterChange] = useState(false);
+	const playAfterChangeRef = useRef(false);
+	const [playRequest, setPlayRequest] = useState(0);
 	const [playWholeSection, setPlayWholeSection] = useState(false);
 	const [selectedUnit, setSelectedUnit] = useState(() => courses[initialProgress.courseId].units.find((item) => initialProgress.currentIndex + 1 >= item.start && initialProgress.currentIndex + 1 <= item.end)?.number ?? 1);
 	const [query, setQuery] = useState("");
@@ -174,7 +179,7 @@ function App() {
 				String(lesson.index).includes(normalizedQuery);
 			return matchesUnit && matchesQuery;
 		});
-	}, [query, unit]);
+	}, [lessons, query, unit]);
 
 	useEffect(() => {
 		const audio = audioRef.current;
@@ -185,12 +190,10 @@ function App() {
 	useEffect(() => {
 		const audio = audioRef.current;
 		if (!audio) return;
-		setCurrentTime(0);
-		setDuration(0);
-		if (!playAfterChange) return;
+		if (!playAfterChangeRef.current) return;
+		playAfterChangeRef.current = false;
 		void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-		setPlayAfterChange(false);
-	}, [courseId, currentIndex, currentSentence, playAfterChange]);
+	}, [courseId, currentIndex, currentSentence, playRequest]);
 
 	useEffect(() => {
 		if (resumeRef.current) return;
@@ -199,7 +202,6 @@ function App() {
 
 	useEffect(() => {
 		let disposed = false;
-		setTranscript(null);
 		const id = String(current.index).padStart(2, "0");
 		const folder = course.trackAudio ? "intermediate" : "";
 		const languagePaths = course.trackAudio
@@ -208,10 +210,17 @@ function App() {
 		void Promise.all(languagePaths.map((source) => fetch(source).then((response) => response.text())))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
+				const japaneseLines = extractSpokenLines(jp, true);
+				const chineseLines = extractSpokenLines(zh);
+				const englishLines = extractSpokenLines(en);
+				const hasReliableGroups = [japaneseLines, chineseLines, englishLines].every((lines) =>
+					lines.length >= current.sentenceCount * 2 && Number.isInteger(lines.length / current.sentenceCount),
+				);
+				const placeholders = Array.from({ length: current.sentenceCount }, () => "文本待校对");
 				setTranscript({
-					jp: course.trackAudio ? [jp] : groupSentences(extractSpokenLines(jp, true), current.sentenceCount),
-					zh: course.trackAudio ? [zh] : groupSentences(extractSpokenLines(zh), current.sentenceCount),
-					en: course.trackAudio ? [en] : groupSentences(extractSpokenLines(en), current.sentenceCount),
+					jp: course.trackAudio ? [jp] : hasReliableGroups ? groupSentences(japaneseLines, current.sentenceCount) : placeholders,
+					zh: course.trackAudio ? [zh] : hasReliableGroups ? groupSentences(chineseLines, current.sentenceCount) : placeholders,
+					en: course.trackAudio ? [en] : hasReliableGroups ? groupSentences(englishLines, current.sentenceCount) : placeholders,
 				});
 			})
 			.catch(() => { if (!disposed) setTranscript(null); });
@@ -227,17 +236,6 @@ function App() {
 		});
 		return () => window.cancelAnimationFrame(frame);
 	}, [courseId, currentIndex, currentSentence, showTranscript, transcript]);
-
-	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.code === "Space" && !(event.target instanceof HTMLInputElement)) {
-				event.preventDefault();
-				void togglePlayback();
-			}
-		};
-		window.addEventListener("keydown", onKeyDown);
-		return () => window.removeEventListener("keydown", onKeyDown);
-	});
 
 	async function startPlayback() {
 		const audio = audioRef.current;
@@ -261,21 +259,41 @@ function App() {
 		}
 	}
 
+	function requestPlayback() {
+		playAfterChangeRef.current = true;
+		setPlayRequest((request) => request + 1);
+	}
+
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.code === "Space" && !(event.target instanceof HTMLInputElement)) {
+				event.preventDefault();
+				void togglePlayback();
+			}
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	});
+
 	function selectLesson(index: number) {
 		resumeRef.current = null;
 		setCurrentTime(0);
+		setDuration(0);
+		setTranscript(null);
 		setCurrentIndex(index);
 		setCurrentSentence(1);
 		const parentUnit = units.find((item) => index + 1 >= item.start && index + 1 <= item.end);
 		if (parentUnit) setSelectedUnit(parentUnit.number);
 		setPlayWholeSection(true);
-		setPlayAfterChange(true);
+		requestPlayback();
 		setShowTranscript(false);
 	}
 
 	function selectCourse(nextCourse: CourseId) {
 		resumeRef.current = null;
 		setCurrentTime(0);
+		setDuration(0);
+		setTranscript(null);
 		audioRef.current?.pause();
 		setCourseId(nextCourse);
 		setCurrentIndex(0);
@@ -290,9 +308,10 @@ function App() {
 	function playSentence(sentence: number) {
 		resumeRef.current = null;
 		setCurrentTime(0);
+		setDuration(0);
 		setCurrentSentence(sentence);
 		setPlayWholeSection(false);
-		setPlayAfterChange(true);
+		requestPlayback();
 	}
 
 	function moveSentence(direction: -1 | 1) {
@@ -312,8 +331,10 @@ function App() {
 		setCurrentIndex(nextIndex);
 		setCurrentSentence(nextSentence);
 		setCurrentTime(0);
+		setDuration(0);
+		setTranscript(null);
 		setPlayWholeSection(false);
-		setPlayAfterChange(true);
+		requestPlayback();
 		const parentUnit = units.find((item) => nextLesson.index >= item.start && nextLesson.index <= item.end);
 		if (parentUnit) setSelectedUnit(parentUnit.number);
 	}
@@ -333,7 +354,9 @@ function App() {
 		if (loop) return;
 		if (playWholeSection && currentSentence < current.sentenceCount) {
 			setCurrentSentence((sentence) => sentence + 1);
-			setPlayAfterChange(true);
+			setCurrentTime(0);
+			setDuration(0);
+			requestPlayback();
 			return;
 		}
 		setIsPlaying(false);
