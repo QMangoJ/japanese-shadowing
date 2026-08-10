@@ -11,8 +11,10 @@ type PracticeItem = {
 
 type Unit = { number: number; start: number; end: number };
 type Transcript = { jp: string[]; zh: string[]; en: string[] };
+type CourseId = "beginner" | "intermediate";
+type Course = { title: string; units: Unit[]; lessons: PracticeItem[]; trackAudio: boolean };
 
-const units: Unit[] = [
+const beginnerUnits: Unit[] = [
 	{ number: 1, start: 1, end: 10 },
 	{ number: 2, start: 11, end: 20 },
 	{ number: 3, start: 21, end: 30 },
@@ -30,7 +32,7 @@ const sentenceCounts = [
 	...Array(4).fill(2),
 ];
 
-const lessons: PracticeItem[] = Array.from({ length: 56 }, (_, position) => {
+const beginnerLessons: PracticeItem[] = Array.from({ length: 56 }, (_, position) => {
 	const index = position + 1;
 	const padded = String(index).padStart(2, "0");
 	return {
@@ -41,6 +43,29 @@ const lessons: PracticeItem[] = Array.from({ length: 56 }, (_, position) => {
 		sentenceCount: sentenceCounts[position],
 	};
 });
+
+const intermediateUnits: Unit[] = [
+	{ number: 1, start: 1, end: 8 }, { number: 2, start: 9, end: 17 },
+	{ number: 3, start: 18, end: 26 }, { number: 4, start: 27, end: 38 },
+	{ number: 5, start: 39, end: 47 }, { number: 6, start: 48, end: 56 },
+	{ number: 7, start: 57, end: 64 }, { number: 8, start: 65, end: 74 },
+];
+
+function intermediateSection(index: number) {
+	const ranges = [7, 15, 25, 37, 46, 54, 63];
+	if (index >= 65) return "上级";
+	return ranges.some((end) => index <= end) ? "Section 1 · 中级" : "Section 2 · 上级";
+}
+
+const intermediateLessons: PracticeItem[] = Array.from({ length: 74 }, (_, position) => {
+	const index = position + 1;
+	return { index, label: `Track ${String(index).padStart(2, "0")}`, audio: `/audio-intermediate/${String(index).padStart(2, "0")}.mp3`, hasBookText: true, sentenceCount: 1 };
+});
+
+const courses: Record<CourseId, Course> = {
+	beginner: { title: "初～中级编", units: beginnerUnits, lessons: beginnerLessons, trackAudio: false },
+	intermediate: { title: "中～上级编", units: intermediateUnits, lessons: intermediateLessons, trackAudio: true },
+};
 
 const speeds = [0.75, 1, 1.25, 1.5];
 
@@ -90,6 +115,7 @@ function FuriganaText({ text }: { text: string }) {
 
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
+	const [courseId, setCourseId] = useState<CourseId>("beginner");
 	const [currentIndex, setCurrentIndex] = useState(0);
 	const [currentSentence, setCurrentSentence] = useState(1);
 	const [isPlaying, setIsPlaying] = useState(false);
@@ -104,8 +130,13 @@ function App() {
 	const [query, setQuery] = useState("");
 	const [transcript, setTranscript] = useState<Transcript | null>(null);
 
+	const course = courses[courseId];
+	const lessons = course.lessons;
+	const units = course.units;
 	const current = lessons[currentIndex];
-	const audioSource = `/audio/${String(current.index).padStart(2, "0")}-${currentSentence}.mp3`;
+	const audioSource = course.trackAudio
+		? `/audio-intermediate/${String(current.index).padStart(2, "0")}.mp3`
+		: `/audio/${String(current.index).padStart(2, "0")}-${currentSentence}.mp3`;
 	const unit = units.find((item) => item.number === selectedUnit) ?? units[0];
 	const filteredLessons = useMemo(() => {
 		const normalizedQuery = query.trim().toLowerCase();
@@ -139,18 +170,22 @@ function App() {
 		let disposed = false;
 		setTranscript(null);
 		const id = String(current.index).padStart(2, "0");
-		void Promise.all(["jp-ruby", "zh", "en"].map((language) => fetch(`/transcripts/${language}/${id}.txt`).then((response) => response.text())))
+		const folder = course.trackAudio ? "intermediate" : "";
+		const languagePaths = course.trackAudio
+			? ["jp-ruby", "zh", "en"].map((language) => `/transcripts/${folder}/${language}/${id}.txt`)
+			: ["jp-ruby", "zh", "en"].map((language) => `/transcripts/${language}/${id}.txt`);
+		void Promise.all(languagePaths.map((source) => fetch(source).then((response) => response.text())))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
 				setTranscript({
-					jp: groupSentences(extractSpokenLines(jp, true), current.sentenceCount),
-					zh: groupSentences(extractSpokenLines(zh), current.sentenceCount),
-					en: groupSentences(extractSpokenLines(en), current.sentenceCount),
+					jp: course.trackAudio ? [jp] : groupSentences(extractSpokenLines(jp, true), current.sentenceCount),
+					zh: course.trackAudio ? [zh] : groupSentences(extractSpokenLines(zh), current.sentenceCount),
+					en: course.trackAudio ? [en] : groupSentences(extractSpokenLines(en), current.sentenceCount),
 				});
 			})
 			.catch(() => { if (!disposed) setTranscript(null); });
 		return () => { disposed = true; };
-	}, [current.index, current.sentenceCount]);
+	}, [course.trackAudio, current.index, current.sentenceCount]);
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
@@ -192,6 +227,17 @@ function App() {
 		if (parentUnit) setSelectedUnit(parentUnit.number);
 		setPlayWholeSection(true);
 		setPlayAfterChange(true);
+	}
+
+	function selectCourse(nextCourse: CourseId) {
+		audioRef.current?.pause();
+		setCourseId(nextCourse);
+		setCurrentIndex(0);
+		setCurrentSentence(1);
+		setSelectedUnit(1);
+		setQuery("");
+		setPlayWholeSection(false);
+		setIsPlaying(false);
 	}
 
 	function playSentence(sentence: number) {
@@ -237,7 +283,15 @@ function App() {
 					<div className="hero-card" aria-label="今日练习提示">
 							<span>课程结构</span>
 							<strong>6 个单元</strong>
-							<p>56 个 section，包含日语原文、振假名、中文与英文翻译。</p>
+							<p>{course.trackAudio ? "74 段音频，8 个单元，包含日中英可选择文本。" : "56 个 section，包含日语原文、振假名、中文与英文翻译。"}</p>
+					</div>
+				</section>
+
+				<section className="library course-library" aria-label="选择教材">
+					<div className="library-header"><div><p className="eyebrow">选择教材</p><h2>{course.title}</h2></div></div>
+					<div className="filter-row" role="group" aria-label="教材切换">
+						<button className={courseId === "beginner" ? "selected" : ""} onClick={() => selectCourse("beginner")}>初～中级编<small>56 个 section</small></button>
+						<button className={courseId === "intermediate" ? "selected" : ""} onClick={() => selectCourse("intermediate")}>中～上级编<small>74 段音频 · 8 Unit</small></button>
 					</div>
 				</section>
 
@@ -303,7 +357,7 @@ function App() {
 
 				{current.hasBookText && <section className="source-card" aria-label="源书对话与翻译">
 					<div className="source-heading">
-						<div><p className="eyebrow">逐句文本</p><h2>Section {String(current.index).padStart(2, "0")}</h2><p>日语、中文与英文均为可选择、可复制的文本；日语句中的汉字均会显示读音。</p></div>
+						<div><p className="eyebrow">{course.trackAudio ? "整段文本" : "逐句文本"}</p><h2>{current.label}</h2><p>日语、中文与英文均为可选择、可复制的文本；日语句中的汉字均会显示读音。</p></div>
 						<div className="translation-tabs" role="group" aria-label="翻译语言">
 							<button className={translation === "zh" ? "selected" : ""} onClick={() => setTranslation("zh")}>中文</button>
 							<button className={translation === "en" ? "selected" : ""} onClick={() => setTranslation("en")}>English</button>
@@ -335,7 +389,7 @@ function App() {
 							const active = lesson.index - 1 === currentIndex;
 							return <button key={lesson.index} className={`lesson-row ${active ? "active" : ""}`} onClick={() => selectLesson(lesson.index - 1)}>
 								<span className="lesson-number">{String(lesson.index).padStart(2, "0")}</span>
-								<span className="lesson-title"><strong>{lesson.label}</strong><small>{lesson.sentenceCount} 句 · 连续播放</small></span>
+								<span className="lesson-title"><strong>{lesson.label}</strong><small>{course.trackAudio ? `${intermediateSection(lesson.index)} · 整段播放` : `${lesson.sentenceCount} 句 · 连续播放`}</small></span>
 								<span className="lesson-play">{active && isPlaying ? "Ⅱ" : "▶"}</span>
 							</button>;
 						})}
