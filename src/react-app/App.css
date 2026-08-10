@@ -8,7 +8,7 @@ button { cursor: pointer; }
 .skip-link { position: fixed; left: 1rem; top: -4rem; z-index: 10; padding: .65rem 1rem; color: #fff; background: #1c5547; border-radius: .5rem; }
 .skip-link:focus { top: 1rem; }
 .topbar { max-width: 1440px; height: 72px; margin: auto; padding: 0 32px; display: flex; align-items: center; justify-content: space-between; }
-.brand { padding: 0; border: 0; color: #183e34; display: inline-flex; gap: 10px; align-items: center; background: transparent; font: 800 1.13rem/1 "Avenir Next", "Hiragino Sans", sans-serif; letter-spacing: .08em; }
+.brand { padding: 0; border: 0; color: #183e34; display: inline-flex; gap: 10px; align-items: center; background: transparent; font: 800 1.08rem/1 "Avenir Next", "Hiragino Sans", sans-serif; letter-spacing: .02em; }
 .brand-mark { width: 35px; height: 35px; display: grid; place-items: center; color: #f7f4ee; background: #1c5547; border-radius: 11px 11px 11px 2px; font: 800 1rem serif; letter-spacing: 0; }
 .topbar-note { display: flex; align-items: center; gap: 8px; color: #6c766f; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
 .pulse-dot { width: 7px; height: 7px; border-radius: 999px; background: #e77950; box-shadow: 0 0 0 4px #f3d8cd; }

@@ -334,9 +334,9 @@ function App() {
 		<div className="app-shell">
 			<a className="skip-link" href="#practice-list">跳到练习列表</a>
 			<header className="topbar">
-				<button className="brand" onClick={() => setScreen("practice")} aria-label="KAGEKOE 首页">
-					<span className="brand-mark">声</span>
-					<span>KAGEKOE</span>
+				<button className="brand" onClick={() => setScreen("practice")} aria-label="日本語Shadowing 首页">
+					<span className="brand-mark">日</span>
+					<span>日本語Shadowing</span>
 				</button>
 				<button className="guide-link" onClick={() => setScreen("guide")}>使用方法</button>
 			</header>
@@ -471,7 +471,7 @@ function App() {
 				</div>}
 			</>}
 
-			<footer>© 2026 KAGEKOE · 日语 Shadowing 练习</footer>
+			<footer>© 2026 日本語Shadowing · 日语 Shadowing 练习</footer>
 			<audio
 				ref={audioRef}
 				src={audioSource}
