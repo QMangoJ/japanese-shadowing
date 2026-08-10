@@ -75,10 +75,15 @@ function groupSentences(lines: string[], sentenceCount: number) {
 }
 
 function FuriganaText({ text }: { text: string }) {
-	return <>{text.split("\n").map((line, index) => {
-		const match = line.match(/^(.*)([一-龯々〆ヶ]+)([^（）]*?)（([ぁ-ゖァ-ヺー]+)）$/);
-		return <span key={`${line}-${index}`} className="japanese-line">
-			{match ? <>{match[1]}<ruby>{match[2]}<rt>{match[4]}</rt></ruby>{match[3]}</> : line}
+	return <>{text.split("\n").map((line, lineIndex) => {
+		const parts = line.split(/(\{\{.*?\|.*?\}\})/g);
+		return <span key={`${line}-${lineIndex}`} className="japanese-line">
+			{parts.map((part, partIndex) => {
+				const match = part.match(/^\{\{(.+?)\|(.+?)\}\}$/);
+				return match
+					? <ruby key={`${part}-${partIndex}`}>{match[1]}<rt>{match[2]}</rt></ruby>
+					: part;
+			})}
 		</span>;
 	})}</>;
 }
@@ -134,7 +139,7 @@ function App() {
 		let disposed = false;
 		setTranscript(null);
 		const id = String(current.index).padStart(2, "0");
-		void Promise.all(["jp", "zh", "en"].map((language) => fetch(`/transcripts/${language}/${id}.txt`).then((response) => response.text())))
+		void Promise.all(["jp-ruby", "zh", "en"].map((language) => fetch(`/transcripts/${language}/${id}.txt`).then((response) => response.text())))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
 				setTranscript({
@@ -298,7 +303,7 @@ function App() {
 
 				{current.hasBookText && <section className="source-card" aria-label="源书对话与翻译">
 					<div className="source-heading">
-						<div><p className="eyebrow">逐句文本</p><h2>Section {String(current.index).padStart(2, "0")}</h2><p>日语、中文与英文均为可选择、可复制的文本；原书识别到的振假名会显示在相应汉字上方。</p></div>
+						<div><p className="eyebrow">逐句文本</p><h2>Section {String(current.index).padStart(2, "0")}</h2><p>日语、中文与英文均为可选择、可复制的文本；日语句中的汉字均会显示读音。</p></div>
 						<div className="translation-tabs" role="group" aria-label="翻译语言">
 							<button className={translation === "zh" ? "selected" : ""} onClick={() => setTranslation("zh")}>中文</button>
 							<button className={translation === "en" ? "selected" : ""} onClick={() => setTranslation("en")}>English</button>
