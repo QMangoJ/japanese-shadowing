@@ -322,6 +322,14 @@ function App() {
 		requestPlayback();
 	}
 
+	function toggleSentencePlayback(sentence: number) {
+		if (sentence === currentSentence) {
+			void togglePlayback();
+			return;
+		}
+		playSentence(sentence);
+	}
+
 	function moveSentence(direction: -1 | 1) {
 		resumeRef.current = null;
 		if (direction === -1 && currentSentence > 1) {
@@ -468,8 +476,8 @@ function App() {
 					</div>
 					{transcript ? <div className="transcript-list">
 						{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
-							<button className="sentence-play-button" onClick={() => playSentence(index + 1)} aria-label={`播放第 ${index + 1} 句`}>
-								<span>{String(index + 1).padStart(2, "0")}</span><b>▶</b>
+							<button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => toggleSentencePlayback(index + 1)} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}>
+								<span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b>
 							</button>
 							<div className="transcript-text">
 								<p className="japanese-text"><FuriganaText text={japanese} /></p>
@@ -479,7 +487,7 @@ function App() {
 					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
 				</section>}
 
-				<section className="library" id="practice-list">
+				<section className="library section-library" id="practice-list" onWheel={(event) => event.preventDefault()} onTouchMove={(event) => event.preventDefault()}>
 					<div className="library-header">
 						<div><p className="eyebrow">课程单元</p><h2>选择一个 section</h2></div>
 						<label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索编号" aria-label="搜索练习编号" /></label>
@@ -510,7 +518,7 @@ function App() {
 				</div>
 				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本">
 					<div className="sheet-panel"><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button onClick={() => setShowTranscript(false)} aria-label="关闭全文">×</button></div>
-						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className="sentence-play-button" onClick={() => { playSentence(index + 1); setShowTranscript(false); }}><span>{String(index + 1).padStart(2, "0")}</span><b>▶</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text"><small>{translation === "zh" ? "中文" : "EN"}</small>{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text"><small>{translation === "zh" ? "中文" : "EN"}</small>{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
 					</div>
 				</div>}
 			</>}
