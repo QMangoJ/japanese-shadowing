@@ -219,6 +219,16 @@ function App() {
 	}, [course.trackAudio, current.index, current.sentenceCount]);
 
 	useEffect(() => {
+		if (!transcript) return;
+		const frame = window.requestAnimationFrame(() => {
+			document.querySelectorAll<HTMLElement>(".transcript-row.active").forEach((row) => {
+				row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+			});
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, [courseId, currentIndex, currentSentence, showTranscript, transcript]);
+
+	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.code === "Space" && !(event.target instanceof HTMLInputElement)) {
 				event.preventDefault();
@@ -372,7 +382,10 @@ function App() {
 							<span className="level-badge">音频 {String(current.index).padStart(2, "0")}</span>
 						</div>
 
-						<p className="sentence-placeholder">{course.trackAudio ? "点击 Track 播放书中对应整段音频；下方可查看同页的日中英文本。" : "点击 section 卡片即可从第 1 句连续播放；点击下方原文句块，则播放该句的对应 MP3。"}</p>
+						<div className="now-playing-preview" aria-live="polite">
+							<p className="now-playing-japanese"><FuriganaText text={nowPlayingText} /></p>
+							<p className="now-playing-translation"><small>{translation === "zh" ? "中文" : "EN"}</small>{nowPlayingTranslation}</p>
+						</div>
 
 						<div className="waveform" aria-hidden="true">
 							{Array.from({ length: 42 }, (_, index) => <i key={index} style={{ height: `${18 + ((index * 31) % 60)}%` }} />)}
