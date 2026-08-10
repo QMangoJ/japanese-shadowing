@@ -583,6 +583,7 @@ function App() {
 				</section>
 
 				<section className="desktop-practice-layout">
+				<div className="left-practice-column">
 				<section className="workspace" aria-label="播放器与练习列表">
 					<article className="player-card">
 						<div className="player-heading">
@@ -640,6 +641,28 @@ function App() {
 
 				</section>
 
+				<section className="library" id="practice-list">
+					<div className="library-header">
+						<div><p className="eyebrow">课程单元</p><h2>选择一个 section</h2></div>
+						<label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索编号" aria-label="搜索练习编号" /></label>
+					</div>
+					<div className="filter-row" role="group" aria-label="单元筛选">
+						{units.map((item) => <button key={item.number} className={selectedUnit === item.number ? "selected" : ""} onClick={() => { setSelectedUnit(item.number); setQuery(""); }}>Unit {item.number}<small>{String(item.start).padStart(2, "0")}–{String(item.end).padStart(2, "0")}</small></button>)}
+					</div>
+					<div className="lesson-grid">
+						{filteredLessons.map((lesson) => {
+							const active = lesson.index - 1 === currentIndex;
+							return <button key={lesson.index} className={`lesson-row ${active ? "active" : ""}`} onClick={() => selectLesson(lesson.index - 1)}>
+								<span className="lesson-number">{String(lesson.index).padStart(2, "0")}</span>
+								<span className="lesson-title"><strong>{lesson.label}</strong><small>{active ? (course.trackAudio ? "正在播放此 Track" : `正在第 ${currentSentence} 句`) : (course.trackAudio ? `${intermediateSection(lesson.index)} · 整段播放` : `${lesson.sentenceCount} 句 · 连续播放`)}</small></span>
+								<span className="lesson-play">{active && isPlaying ? "Ⅱ" : "▶"}</span>
+							</button>;
+						})}
+					</div>
+					{filteredLessons.length === 0 && <p className="empty-state">没有匹配的练习，请换一个编号试试。</p>}
+				</section>
+				</div>
+
 				{current.hasBookText && <section className="source-card" aria-label="源书对话与翻译">
 					<div className="source-heading">
 						<div><p className="eyebrow">{course.trackAudio ? "整段文本" : "逐句文本"}</p><h2>{current.label}</h2><p>日语、中文与英文均为可选择、可复制的文本；日语句中的汉字均会显示读音。</p></div>
@@ -661,27 +684,6 @@ function App() {
 						</article>)}
 					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
 				</section>}
-
-				<section className="library" id="practice-list">
-					<div className="library-header">
-						<div><p className="eyebrow">课程单元</p><h2>选择一个 section</h2></div>
-						<label className="search"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索编号" aria-label="搜索练习编号" /></label>
-					</div>
-					<div className="filter-row" role="group" aria-label="单元筛选">
-						{units.map((item) => <button key={item.number} className={selectedUnit === item.number ? "selected" : ""} onClick={() => { setSelectedUnit(item.number); setQuery(""); }}>Unit {item.number}<small>{String(item.start).padStart(2, "0")}–{String(item.end).padStart(2, "0")}</small></button>)}
-					</div>
-					<div className="lesson-grid">
-						{filteredLessons.map((lesson) => {
-							const active = lesson.index - 1 === currentIndex;
-							return <button key={lesson.index} className={`lesson-row ${active ? "active" : ""}`} onClick={() => selectLesson(lesson.index - 1)}>
-								<span className="lesson-number">{String(lesson.index).padStart(2, "0")}</span>
-								<span className="lesson-title"><strong>{lesson.label}</strong><small>{active ? (course.trackAudio ? "正在播放此 Track" : `正在第 ${currentSentence} 句`) : (course.trackAudio ? `${intermediateSection(lesson.index)} · 整段播放` : `${lesson.sentenceCount} 句 · 连续播放`)}</small></span>
-								<span className="lesson-play">{active && isPlaying ? "Ⅱ" : "▶"}</span>
-							</button>;
-						})}
-					</div>
-					{filteredLessons.length === 0 && <p className="empty-state">没有匹配的练习，请换一个编号试试。</p>}
-				</section>
 				</section>
 				</>}
 			</main>
