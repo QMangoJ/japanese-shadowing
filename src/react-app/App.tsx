@@ -98,11 +98,19 @@ function formatTime(seconds: number) {
 
 function extractSpokenLines(raw: string, attachReadings = false) {
 	const spoken: string[] = [];
+	let pendingSpeaker: string | null = null;
 	for (const untrimmed of raw.split("\n")) {
 		const line = untrimmed.trim();
-		const match = line.match(/([AB])\s*[:：]\s*(.+)/i);
+		const match = line.match(/([AB])\s*[:：]\s*(.*)$/i);
 		if (match) {
-			spoken.push(`${match[1].toUpperCase()}: ${match[2].trim().replace(/太野/g, "大野")}`);
+			const text = match[2].trim();
+			if (text) spoken.push(`${match[1].toUpperCase()}: ${text.replace(/太野/g, "大野")}`);
+			else pendingSpeaker = match[1].toUpperCase();
+			continue;
+		}
+		if (pendingSpeaker && line) {
+			spoken.push(`${pendingSpeaker}: ${line.replace(/太野/g, "大野")}`);
+			pendingSpeaker = null;
 			continue;
 		}
 		if (attachReadings && spoken.length > 0 && /^[ぁ-ゖァ-ヺー・]+$/.test(line)) {
