@@ -282,7 +282,7 @@ function App() {
 			<main id="top">
 				{screen === "guide" ? <section className="guide-page">
 					<p className="eyebrow">Shadowing guide</p>
-					<h1>练得短，<br /><em>但练得准。</em></h1>
+					<h1>听见一句，<br /><em>跟上一步。</em></h1>
 					<p className="hero-copy">每次用 10 分钟，选择一段音频，先听再跟读。不要等到每个词都懂才开口。</p>
 					<ol className="guide-steps">
 						<li><span>01</span><div><strong>先听一遍</strong><p>不看文字，感受节奏、重音和停顿。</p></div></li>
@@ -291,19 +291,6 @@ function App() {
 					</ol>
 					<button className="back-to-practice" onClick={() => setScreen("practice")}>返回练习</button>
 				</section> : <>
-				<section className="hero">
-					<div>
-						<p className="eyebrow">日语跟读练习</p>
-						<h1>听见一句，<br /><em>跟上一步。</em></h1>
-						<p className="hero-copy">从单元进入 section，先听原声，再紧跟复述。每个 section 均按书中编号播放同名 MP3。</p>
-					</div>
-					<div className="hero-card" aria-label="今日练习提示">
-							<span>课程结构</span>
-							<strong>{course.units.length} 个单元</strong>
-							<p>{course.trackAudio ? "74 段音频，8 个单元，包含日中英可选择文本。" : "56 个 section，包含日语原文、振假名、中文与英文翻译。"}</p>
-					</div>
-				</section>
-
 				<section className="library course-library" aria-label="选择教材">
 					<div className="library-header"><div><p className="eyebrow">选择教材</p><h2>{course.title}</h2></div></div>
 					<div className="filter-row" role="group" aria-label="教材切换">
