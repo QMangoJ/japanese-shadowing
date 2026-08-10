@@ -13,6 +13,7 @@ type Unit = { number: number; start: number; end: number };
 type Transcript = { jp: string[]; zh: string[]; en: string[] };
 type CourseId = "beginner" | "intermediate";
 type Course = { title: string; units: Unit[]; lessons: PracticeItem[]; trackAudio: boolean };
+type SavedProgress = { courseId: CourseId; currentIndex: number; currentSentence: number; currentTime: number };
 
 const beginnerUnits: Unit[] = [
 	{ number: 1, start: 1, end: 10 },
@@ -67,6 +68,25 @@ const courses: Record<CourseId, Course> = {
 	intermediate: { title: "中～上级编", units: intermediateUnits, lessons: intermediateLessons, trackAudio: true },
 };
 
+const progressStorageKey = "kagekoe-shadowing-progress";
+
+function readSavedProgress(): SavedProgress {
+	const fallback: SavedProgress = { courseId: "beginner", currentIndex: 0, currentSentence: 1, currentTime: 0 };
+	if (typeof window === "undefined") return fallback;
+	try {
+		const saved = JSON.parse(window.localStorage.getItem(progressStorageKey) ?? "{}") as Partial<SavedProgress>;
+		if (saved.courseId !== "beginner" && saved.courseId !== "intermediate") return fallback;
+		const lessons = courses[saved.courseId].lessons;
+		const currentIndex = Number.isInteger(saved.currentIndex) ? Math.max(0, Math.min(saved.currentIndex!, lessons.length - 1)) : 0;
+		const sentenceCount = lessons[currentIndex].sentenceCount;
+		const currentSentence = Number.isInteger(saved.currentSentence) ? Math.max(1, Math.min(saved.currentSentence!, sentenceCount)) : 1;
+		const currentTime = Number.isFinite(saved.currentTime) ? Math.max(0, saved.currentTime!) : 0;
+		return { courseId: saved.courseId, currentIndex, currentSentence, currentTime };
+	} catch {
+		return fallback;
+	}
+}
+
 const speeds = [0.75, 1, 1.25, 1.5];
 
 function formatTime(seconds: number) {
@@ -115,9 +135,11 @@ function FuriganaText({ text }: { text: string }) {
 
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
-	const [courseId, setCourseId] = useState<CourseId>("beginner");
-	const [currentIndex, setCurrentIndex] = useState(0);
-	const [currentSentence, setCurrentSentence] = useState(1);
+	const [initialProgress] = useState(readSavedProgress);
+	const resumeRef = useRef<SavedProgress | null>(initialProgress.currentTime > 0 ? initialProgress : null);
+	const [courseId, setCourseId] = useState<CourseId>(initialProgress.courseId);
+	const [currentIndex, setCurrentIndex] = useState(initialProgress.currentIndex);
+	const [currentSentence, setCurrentSentence] = useState(initialProgress.currentSentence);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [currentTime, setCurrentTime] = useState(0);
 	const [duration, setDuration] = useState(0);
@@ -126,7 +148,7 @@ function App() {
 	const [translation, setTranslation] = useState<"zh" | "en">("zh");
 	const [playAfterChange, setPlayAfterChange] = useState(false);
 	const [playWholeSection, setPlayWholeSection] = useState(false);
-	const [selectedUnit, setSelectedUnit] = useState(1);
+	const [selectedUnit, setSelectedUnit] = useState(() => courses[initialProgress.courseId].units.find((item) => initialProgress.currentIndex + 1 >= item.start && initialProgress.currentIndex + 1 <= item.end)?.number ?? 1);
 	const [query, setQuery] = useState("");
 	const [transcript, setTranscript] = useState<Transcript | null>(null);
 	const [screen, setScreen] = useState<"practice" | "guide">("practice");
@@ -168,7 +190,12 @@ function App() {
 		if (!playAfterChange) return;
 		void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
 		setPlayAfterChange(false);
-	}, [currentIndex, currentSentence, playAfterChange]);
+	}, [courseId, currentIndex, currentSentence, playAfterChange]);
+
+	useEffect(() => {
+		if (resumeRef.current) return;
+		window.localStorage.setItem(progressStorageKey, JSON.stringify({ courseId, currentIndex, currentSentence, currentTime }));
+	}, [courseId, currentIndex, currentSentence, currentTime]);
 
 	useEffect(() => {
 		let disposed = false;
@@ -225,6 +252,8 @@ function App() {
 	}
 
 	function selectLesson(index: number) {
+		resumeRef.current = null;
+		setCurrentTime(0);
 		setCurrentIndex(index);
 		setCurrentSentence(1);
 		const parentUnit = units.find((item) => index + 1 >= item.start && index + 1 <= item.end);
@@ -235,6 +264,8 @@ function App() {
 	}
 
 	function selectCourse(nextCourse: CourseId) {
+		resumeRef.current = null;
+		setCurrentTime(0);
 		audioRef.current?.pause();
 		setCourseId(nextCourse);
 		setCurrentIndex(0);
@@ -247,12 +278,15 @@ function App() {
 	}
 
 	function playSentence(sentence: number) {
+		resumeRef.current = null;
+		setCurrentTime(0);
 		setCurrentSentence(sentence);
 		setPlayWholeSection(false);
 		setPlayAfterChange(true);
 	}
 
 	function moveSentence(direction: -1 | 1) {
+		resumeRef.current = null;
 		if (direction === -1 && currentSentence > 1) {
 			playSentence(currentSentence - 1);
 			return;
@@ -267,10 +301,22 @@ function App() {
 		const nextSentence = direction === -1 ? nextLesson.sentenceCount : 1;
 		setCurrentIndex(nextIndex);
 		setCurrentSentence(nextSentence);
+		setCurrentTime(0);
 		setPlayWholeSection(false);
 		setPlayAfterChange(true);
 		const parentUnit = units.find((item) => nextLesson.index >= item.start && nextLesson.index <= item.end);
 		if (parentUnit) setSelectedUnit(parentUnit.number);
+	}
+
+	function handleLoadedMetadata(event: React.SyntheticEvent<HTMLAudioElement>) {
+		const audio = event.currentTarget;
+		setDuration(audio.duration);
+		const saved = resumeRef.current;
+		if (!saved || saved.courseId !== courseId || saved.currentIndex !== currentIndex || saved.currentSentence !== currentSentence) return;
+		const resumeTime = Math.min(saved.currentTime, Math.max(0, audio.duration - .1));
+		audio.currentTime = resumeTime;
+		setCurrentTime(resumeTime);
+		resumeRef.current = null;
 	}
 
 	function handleEnded() {
@@ -315,6 +361,7 @@ function App() {
 					</div>
 				</section>
 
+				<section className="desktop-practice-layout">
 				<section className="workspace" aria-label="播放器与练习列表">
 					<article className="player-card">
 						<div className="player-heading">
@@ -401,12 +448,13 @@ function App() {
 							const active = lesson.index - 1 === currentIndex;
 							return <button key={lesson.index} className={`lesson-row ${active ? "active" : ""}`} onClick={() => selectLesson(lesson.index - 1)}>
 								<span className="lesson-number">{String(lesson.index).padStart(2, "0")}</span>
-								<span className="lesson-title"><strong>{lesson.label}</strong><small>{course.trackAudio ? `${intermediateSection(lesson.index)} · 整段播放` : `${lesson.sentenceCount} 句 · 连续播放`}</small></span>
+								<span className="lesson-title"><strong>{lesson.label}</strong><small>{active ? (course.trackAudio ? "正在播放此 Track" : `正在第 ${currentSentence} 句`) : (course.trackAudio ? `${intermediateSection(lesson.index)} · 整段播放` : `${lesson.sentenceCount} 句 · 连续播放`)}</small></span>
 								<span className="lesson-play">{active && isPlaying ? "Ⅱ" : "▶"}</span>
 							</button>;
 						})}
 					</div>
 					{filteredLessons.length === 0 && <p className="empty-state">没有匹配的练习，请换一个编号试试。</p>}
+				</section>
 				</section>
 				</>}
 			</main>
@@ -418,7 +466,7 @@ function App() {
 				</div>
 				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本">
 					<div className="sheet-panel"><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button onClick={() => setShowTranscript(false)} aria-label="关闭全文">×</button></div>
-						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className="transcript-row"><button className="sentence-play-button" onClick={() => { playSentence(index + 1); setShowTranscript(false); }}><span>{String(index + 1).padStart(2, "0")}</span><b>▶</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text"><small>{translation === "zh" ? "中文" : "EN"}</small>{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className="sentence-play-button" onClick={() => { playSentence(index + 1); setShowTranscript(false); }}><span>{String(index + 1).padStart(2, "0")}</span><b>▶</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text"><small>{translation === "zh" ? "中文" : "EN"}</small>{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
 					</div>
 				</div>}
 			</>}
@@ -429,7 +477,7 @@ function App() {
 				src={audioSource}
 				loop={loop}
 				onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-				onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+				onLoadedMetadata={handleLoadedMetadata}
 				onPlay={() => setIsPlaying(true)}
 				onPause={() => setIsPlaying(false)}
 				onEnded={handleEnded}
