@@ -14,6 +14,16 @@ type Transcript = { jp: string[]; zh: string[]; en: string[] };
 type CourseId = "beginner" | "intermediate";
 type Course = { title: string; units: Unit[]; lessons: PracticeItem[]; trackAudio: boolean };
 type SavedProgress = { courseId: CourseId; currentIndex: number; currentSentence: number; currentTime: number };
+type Favorite = {
+	id: string;
+	text: string;
+	courseId: CourseId;
+	courseTitle: string;
+	lesson: string;
+	sentence: number;
+	translation: string;
+	createdAt: string;
+};
 
 const beginnerUnits: Unit[] = [
 	{ number: 1, start: 1, end: 10 },
@@ -69,6 +79,7 @@ const courses: Record<CourseId, Course> = {
 };
 
 const progressStorageKey = "kagekoe-shadowing-progress";
+const favoritesStorageKey = "kagekoe-shadowing-favorites";
 
 function readSavedProgress(): SavedProgress {
 	const fallback: SavedProgress = { courseId: "beginner", currentIndex: 0, currentSentence: 1, currentTime: 0 };
@@ -84,6 +95,22 @@ function readSavedProgress(): SavedProgress {
 		return { courseId: saved.courseId, currentIndex, currentSentence, currentTime };
 	} catch {
 		return fallback;
+	}
+}
+
+function readFavorites(): Favorite[] {
+	if (typeof window === "undefined") return [];
+	try {
+		const saved = JSON.parse(window.localStorage.getItem(favoritesStorageKey) ?? "[]") as unknown;
+		if (!Array.isArray(saved)) return [];
+		return saved.filter((item): item is Favorite => Boolean(
+			item && typeof item === "object" &&
+			typeof (item as Favorite).id === "string" &&
+			typeof (item as Favorite).text === "string" &&
+			((item as Favorite).courseId === "beginner" || (item as Favorite).courseId === "intermediate"),
+		));
+	} catch {
+		return [];
 	}
 }
 
@@ -192,6 +219,13 @@ function FuriganaText({ text }: { text: string }) {
 	})}</>;
 }
 
+function SelectionFavoriteAction({ selectedText, notice, onSave }: { selectedText: string; notice: string; onSave: () => void }) {
+	if (!selectedText && !notice) return null;
+	return <div className="selection-favorite-action" aria-live="polite">
+		{selectedText ? <><span>已选：{selectedText}</span><button type="button" onPointerDown={(event) => event.preventDefault()} onClick={onSave}>收藏</button></> : <span>{notice}</span>}
+	</div>;
+}
+
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const [initialProgress] = useState(readSavedProgress);
@@ -210,8 +244,12 @@ function App() {
 	const [selectedUnit, setSelectedUnit] = useState(() => courses[initialProgress.courseId].units.find((item) => initialProgress.currentIndex + 1 >= item.start && initialProgress.currentIndex + 1 <= item.end)?.number ?? 1);
 	const [query, setQuery] = useState("");
 	const [transcript, setTranscript] = useState<Transcript | null>(null);
-	const [screen, setScreen] = useState<"practice" | "guide">("practice");
+	const [screen, setScreen] = useState<"practice" | "guide" | "favorites">("practice");
 	const [showTranscript, setShowTranscript] = useState(false);
+	const [favorites, setFavorites] = useState<Favorite[]>(readFavorites);
+	const [selectedText, setSelectedText] = useState("");
+	const [selectedSentence, setSelectedSentence] = useState(initialProgress.currentSentence);
+	const [favoriteNotice, setFavoriteNotice] = useState("");
 
 	const course = courses[courseId];
 	const lessons = course.lessons;
@@ -253,6 +291,41 @@ function App() {
 		if (resumeRef.current) return;
 		window.localStorage.setItem(progressStorageKey, JSON.stringify({ courseId, currentIndex, currentSentence, currentTime }));
 	}, [courseId, currentIndex, currentSentence, currentTime]);
+
+	useEffect(() => {
+		window.localStorage.setItem(favoritesStorageKey, JSON.stringify(favorites));
+	}, [favorites]);
+
+	useEffect(() => {
+		const onSelectionChange = () => {
+			const selection = window.getSelection();
+			if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+				setSelectedText("");
+				return;
+			}
+			const anchor = selection.anchorNode;
+			const element = anchor instanceof Element ? anchor : anchor?.parentElement;
+			const transcriptElement = element?.closest<HTMLElement>(".selectable-transcript");
+			if (!transcriptElement) {
+				setSelectedText("");
+				return;
+			}
+			const fragment = selection.getRangeAt(0).cloneContents();
+			fragment.querySelectorAll("rt, rp").forEach((reading) => reading.remove());
+			const text = (fragment.textContent ?? selection.toString()).replace(/\s+/g, " ").trim();
+			setSelectedText(text);
+			const sentence = Number(transcriptElement.closest<HTMLElement>("[data-sentence]")?.dataset.sentence);
+			setSelectedSentence(Number.isInteger(sentence) && sentence > 0 ? sentence : currentSentence);
+		};
+		document.addEventListener("selectionchange", onSelectionChange);
+		return () => document.removeEventListener("selectionchange", onSelectionChange);
+	}, [currentSentence]);
+
+	useEffect(() => {
+		if (!favoriteNotice) return;
+		const timeout = window.setTimeout(() => setFavoriteNotice(""), 2200);
+		return () => window.clearTimeout(timeout);
+	}, [favoriteNotice]);
 
 	useEffect(() => {
 		let disposed = false;
@@ -317,6 +390,10 @@ function App() {
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape" && showTranscript) {
+				setShowTranscript(false);
+				return;
+			}
 			if (event.code === "Space" && !(event.target instanceof HTMLInputElement)) {
 				event.preventDefault();
 				void togglePlayback();
@@ -326,7 +403,48 @@ function App() {
 		return () => window.removeEventListener("keydown", onKeyDown);
 	});
 
+	function clearTextSelection() {
+		window.getSelection()?.removeAllRanges();
+		setSelectedText("");
+		setFavoriteNotice("");
+	}
+
+	function seekTo(value: number) {
+		const audio = audioRef.current;
+		if (!audio || !Number.isFinite(value)) return;
+		const maximum = Number.isFinite(audio.duration) ? audio.duration : duration;
+		const nextTime = Math.max(0, Math.min(value, maximum || value));
+		if (typeof audio.fastSeek === "function") audio.fastSeek(nextTime);
+		else audio.currentTime = nextTime;
+		setCurrentTime(nextTime);
+		resumeRef.current = null;
+	}
+
+	function saveSelectedText() {
+		const text = selectedText.trim();
+		if (!text) return;
+		const sentence = Math.min(Math.max(selectedSentence, 1), current.sentenceCount);
+		const id = `${courseId}-${current.index}-${sentence}-${text}`;
+		const alreadySaved = favorites.some((favorite) => favorite.id === id);
+		if (!alreadySaved) {
+			setFavorites((items) => [{
+				id,
+				text,
+				courseId,
+				courseTitle: course.title,
+				lesson: current.label,
+				sentence,
+				translation: transcript ? (translation === "zh" ? transcript.zh[sentence - 1] : transcript.en[sentence - 1]) : "",
+				createdAt: new Date().toISOString(),
+			}, ...items]);
+		}
+		setFavoriteNotice(alreadySaved ? "这段文字已在收藏中" : "已添加到收藏");
+		window.getSelection()?.removeAllRanges();
+		setSelectedText("");
+	}
+
 	function selectLesson(index: number) {
+		clearTextSelection();
 		resumeRef.current = null;
 		setCurrentTime(0);
 		setDuration(0);
@@ -340,6 +458,7 @@ function App() {
 	}
 
 	function selectCourse(nextCourse: CourseId) {
+		clearTextSelection();
 		resumeRef.current = null;
 		setCurrentTime(0);
 		setDuration(0);
@@ -355,6 +474,7 @@ function App() {
 	}
 
 	function playSentence(sentence: number) {
+		clearTextSelection();
 		resumeRef.current = null;
 		setCurrentTime(0);
 		setDuration(0);
@@ -425,7 +545,10 @@ function App() {
 					<span className="brand-mark">日</span>
 					<span>日本語Shadowing</span>
 				</button>
-				<button className="guide-link" onClick={() => setScreen("guide")}>使用方法</button>
+				<div className="topbar-actions">
+					<button className="guide-link favorite-link" onClick={() => { clearTextSelection(); setShowTranscript(false); setScreen("favorites"); }} aria-current={screen === "favorites" ? "page" : undefined}>收藏{favorites.length ? ` ${favorites.length}` : ""}</button>
+					<button className="guide-link" onClick={() => { clearTextSelection(); setShowTranscript(false); setScreen("guide"); }} aria-current={screen === "guide" ? "page" : undefined}>使用方法</button>
+				</div>
 			</header>
 
 			<main id="top">
@@ -438,6 +561,17 @@ function App() {
 						<li><span>02</span><div><strong>立即跟读</strong><p>让自己的声音比原声慢半拍；跟不上就从下一句继续。</p></div></li>
 						<li><span>03</span><div><strong>循环打磨</strong><p>对难句打开循环，先稳定节奏，再追求自然。</p></div></li>
 					</ol>
+					<button className="back-to-practice" onClick={() => setScreen("practice")}>返回练习</button>
+				</section> : screen === "favorites" ? <section className="favorites-page">
+					<p className="eyebrow">我的生词本</p>
+					<h1>收藏的文本</h1>
+					<p className="hero-copy">在全文或逐句文本中选中任意日语、中文或英文，再点“收藏”即可保存到这里。</p>
+					{favorites.length > 0 ? <div className="favorites-list">
+						{favorites.map((favorite) => <article className="favorite-item" key={favorite.id}>
+							<div><p className="favorite-text">{favorite.text}</p><p className="favorite-meta">{favorite.courseTitle} · {favorite.lesson} · 第 {favorite.sentence} 句</p>{favorite.translation && <p className="favorite-translation">{favorite.translation}</p>}</div>
+							<button type="button" onClick={() => setFavorites((items) => items.filter((item) => item.id !== favorite.id))} aria-label={`删除收藏：${favorite.text}`}>删除</button>
+						</article>)}
+					</div> : <div className="favorites-empty"><p>还没有收藏内容。</p><p>打开“全文”，长按选中需要记忆的文字，然后点收藏。</p></div>}
 					<button className="back-to-practice" onClick={() => setScreen("practice")}>返回练习</button>
 				</section> : <>
 				<section className="library course-library" aria-label="选择教材">
@@ -477,11 +611,8 @@ function App() {
 								max={duration || 0}
 								step="0.1"
 								value={Math.min(currentTime, duration || 0)}
-								onChange={(event) => {
-									const value = Number(event.target.value);
-									if (audioRef.current) audioRef.current.currentTime = value;
-									setCurrentTime(value);
-								}}
+								onInput={(event) => seekTo(Number(event.currentTarget.value))}
+								onChange={(event) => seekTo(Number(event.currentTarget.value))}
 							/>
 							<span>{formatTime(duration)}</span>
 						</div>
@@ -503,8 +634,8 @@ function App() {
 					</article>
 
 					<div className="mobile-now-playing" aria-label="当前播放文案" aria-live="polite">
-						<div className="mobile-now-copy"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
-						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button onClick={() => setShowTranscript(true)}>全文</button></div>
+						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
+						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" onClick={() => { setSelectedText(""); setShowTranscript(true); }}>全文</button></div>
 					</div>
 
 				</section>
@@ -517,12 +648,13 @@ function App() {
 							<button className={translation === "en" ? "selected" : ""} onClick={() => setTranslation("en")}>English</button>
 						</div>
 					</div>
+					<SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />
 					{transcript ? <div className="transcript-list">
-						{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
+						{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
 							<button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => toggleSentencePlayback(index + 1)} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}>
 								<span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b>
 							</button>
-							<div className="transcript-text">
+							<div className="transcript-text selectable-transcript">
 								<p className="japanese-text"><FuriganaText text={japanese} /></p>
 								<p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>
 							</div>
@@ -555,9 +687,10 @@ function App() {
 			</main>
 
 			{screen === "practice" && <>
-				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本">
-					<div className="sheet-panel"><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button onClick={() => setShowTranscript(false)} aria-label="关闭全文">×</button></div>
-						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
+				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本" onClick={(event) => { if (event.target === event.currentTarget) setShowTranscript(false); }}>
+					<div className="sheet-panel" onClick={(event) => event.stopPropagation()}><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button type="button" className="sheet-close" onClick={() => setShowTranscript(false)} aria-label="关闭全文">关闭</button></div>
+						<SelectionFavoriteAction selectedText={selectedText} notice={favoriteNotice} onSave={saveSelectedText} />
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
 					</div>
 				</div>}
 			</>}
