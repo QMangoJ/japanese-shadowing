@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createHybridStore } from "./hybridStorage";
 import "./App.css";
 
 type PracticeItem = {
@@ -82,21 +83,24 @@ const courses: Record<CourseId, Course> = {
 const progressStorageKey = "kagekoe-shadowing-progress";
 const favoritesStorageKey = "kagekoe-shadowing-favorites";
 
-function readSavedProgress(): SavedProgress {
-	const fallback: SavedProgress = { courseId: "beginner", currentIndex: 0, currentSentence: 1, currentTime: 0 };
-	if (typeof window === "undefined") return fallback;
-	try {
-		const saved = JSON.parse(window.localStorage.getItem(progressStorageKey) ?? "{}") as Partial<SavedProgress>;
-		if (saved.courseId !== "beginner" && saved.courseId !== "intermediate") return fallback;
-		const lessons = courses[saved.courseId].lessons;
-		const currentIndex = Number.isInteger(saved.currentIndex) ? Math.max(0, Math.min(saved.currentIndex!, lessons.length - 1)) : 0;
-		const sentenceCount = lessons[currentIndex].sentenceCount;
-		const currentSentence = Number.isInteger(saved.currentSentence) ? Math.max(1, Math.min(saved.currentSentence!, sentenceCount)) : 1;
-		const currentTime = Number.isFinite(saved.currentTime) ? Math.max(0, saved.currentTime!) : 0;
-		return { courseId: saved.courseId, currentIndex, currentSentence, currentTime };
-	} catch {
-		return fallback;
-	}
+const fallbackProgress: SavedProgress = { courseId: "beginner", currentIndex: 0, currentSentence: 1, currentTime: 0 };
+
+function parseSavedProgress(value: unknown): SavedProgress | null {
+	if (!value || typeof value !== "object") return null;
+	const saved = value as Partial<SavedProgress>;
+	if (saved.courseId !== "beginner" && saved.courseId !== "intermediate") return null;
+	const lessons = courses[saved.courseId].lessons;
+	const currentIndex = Number.isInteger(saved.currentIndex) ? Math.max(0, Math.min(saved.currentIndex!, lessons.length - 1)) : 0;
+	const sentenceCount = lessons[currentIndex].sentenceCount;
+	const currentSentence = Number.isInteger(saved.currentSentence) ? Math.max(1, Math.min(saved.currentSentence!, sentenceCount)) : 1;
+	const currentTime = Number.isFinite(saved.currentTime) ? Math.max(0, saved.currentTime!) : 0;
+	return { courseId: saved.courseId, currentIndex, currentSentence, currentTime };
+}
+
+const progressStore = createHybridStore<SavedProgress>({ localKey: progressStorageKey, scope: "progress", parse: parseSavedProgress });
+
+function readSavedProgress() {
+	return progressStore.readLocal()?.data ?? fallbackProgress;
 }
 
 function readFavorites(): Favorite[] {
@@ -292,8 +296,28 @@ function App() {
 
 	useEffect(() => {
 		if (resumeRef.current) return;
-		window.localStorage.setItem(progressStorageKey, JSON.stringify({ courseId, currentIndex, currentSentence, currentTime }));
+		progressStore.save({ courseId, currentIndex, currentSentence, currentTime });
 	}, [courseId, currentIndex, currentSentence, currentTime]);
+
+	useEffect(() => {
+		let disposed = false;
+		void progressStore.sync((saved) => {
+			if (disposed) return;
+			const remoteCourse = courses[saved.courseId];
+			const remoteLesson = remoteCourse.lessons[saved.currentIndex];
+			const remoteUnit = remoteCourse.units.find((item) => remoteLesson.index >= item.start && remoteLesson.index <= item.end)?.number ?? 1;
+			resumeRef.current = saved.currentTime > 0 ? saved : null;
+			audioRef.current?.pause();
+			setCourseId(saved.courseId);
+			setCurrentIndex(saved.currentIndex);
+			setCurrentSentence(saved.currentSentence);
+			setCurrentTime(0);
+			setDuration(0);
+			setSelectedUnit(remoteUnit);
+			setTranscript(null);
+		});
+		return () => { disposed = true; };
+	}, []);
 
 	useEffect(() => {
 		window.localStorage.setItem(favoritesStorageKey, JSON.stringify(favorites));
