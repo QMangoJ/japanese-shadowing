@@ -1,12 +1,12 @@
 # Optional Cloudflare KV sync
 
-The app is local-first: progress is always saved in Local Storage. Cloud sync starts automatically only after the Worker receives an `APP_KV` binding, and it immediately uploads the existing local progress for that browser.
+The app is local-first: progress is always saved in Local Storage. Cloud sync starts automatically only after the Worker receives a `SHADOWING_PROGRESS` binding, and it immediately uploads the existing local progress for that browser.
 
 Create a KV namespace, then add its ID to `wrangler.json`:
 
 ```json
 "kv_namespaces": [
-  { "binding": "APP_KV", "id": "your-namespace-id" }
+  { "binding": "SHADOWING_PROGRESS", "id": "your-namespace-id" }
 ]
 ```
 

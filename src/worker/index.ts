@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-type StorageEnv = Env & { APP_KV?: KVNamespace };
+type StorageEnv = Env & { SHADOWING_PROGRESS?: KVNamespace };
 type StoredRecord = { version: 1; updatedAt: number; data: unknown };
 type StorageRequest = Partial<StoredRecord> & { deviceId?: unknown };
 
@@ -13,7 +13,7 @@ function storageKey(scope: string, deviceId: string) {
 }
 
 function getStorage(c: { env: StorageEnv }) {
-	return c.env.APP_KV;
+	return c.env.SHADOWING_PROGRESS;
 }
 
 function isValidRequest(value: StorageRequest): value is StoredRecord & { deviceId: string } {
