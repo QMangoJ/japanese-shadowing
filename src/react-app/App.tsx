@@ -293,6 +293,14 @@ function App() {
 
 	useEffect(() => {
 		const audio = audioRef.current;
+		playAfterChangeRef.current = false;
+		if (!audio) return;
+		audio.autoplay = false;
+		audio.pause();
+	}, []);
+
+	useEffect(() => {
+		const audio = audioRef.current;
 		if (!audio) return;
 		if (!playAfterChangeRef.current) return;
 		playAfterChangeRef.current = false;
@@ -776,6 +784,7 @@ function App() {
 			<audio
 				ref={audioRef}
 				src={audioSource}
+				preload="metadata"
 				loop={loop}
 				onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
 				onLoadedMetadata={handleLoadedMetadata}
