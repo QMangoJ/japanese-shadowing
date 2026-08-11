@@ -224,6 +224,10 @@ function FuriganaText({ text }: { text: string }) {
 	})}</>;
 }
 
+function plainJapaneseText(text: string) {
+	return text.replace(/\{\{(.+?)\|.*?\}\}/g, "$1");
+}
+
 function FloatingFavoriteAction({ selectedText, notice, position, onSave }: { selectedText: string; notice: string; position: FavoritePosition | null; onSave: () => void }) {
 	if ((!selectedText && !notice) || !position) return null;
 	return <div className={`floating-favorite-action ${position.placement}`} style={{ left: position.left, top: position.top }} aria-live="polite">
@@ -656,7 +660,7 @@ function App() {
 
 						<div className="now-playing-preview" aria-live="polite">
 							<div className="now-playing-copy">
-								<p className="now-playing-japanese"><FuriganaText text={nowPlayingText} /></p>
+								<p className="now-playing-japanese">{plainJapaneseText(nowPlayingText)}</p>
 								{showNowPlayingTranslation && <p className="now-playing-translation">{nowPlayingTranslation}</p>}
 							</div>
 							<button
@@ -707,7 +711,7 @@ function App() {
 					</article>
 
 					<div className="mobile-now-playing" aria-label="当前播放文案" aria-live="polite">
-						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}</div>
+						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p>{plainJapaneseText(nowPlayingText)}</p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}</div>
 						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" className={showNowPlayingTranslation ? "active" : ""} onClick={() => setShowNowPlayingTranslation((shown) => !shown)} aria-pressed={showNowPlayingTranslation}>{showNowPlayingTranslation ? "译文" : "翻译"}</button><button type="button" onClick={() => { setSelectedText(""); setShowTranscript(true); }}>全文</button></div>
 					</div>
 
