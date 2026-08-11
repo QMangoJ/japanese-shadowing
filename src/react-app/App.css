@@ -73,7 +73,7 @@ h1 em { color: #df704c; font-style: italic; }
 	.mobile-now-playing { position: static; z-index: auto; right: auto; bottom: auto; left: auto; display: flex; gap: 10px; align-items: center; margin: 0 0 14px; padding: 10px 10px 10px 12px; border: 1px solid rgba(225, 117, 82, .35); border-radius: 14px; background: #fffaf7; box-shadow: 0 5px 16px rgba(27, 57, 47, .08); backdrop-filter: none; }
 	.mobile-now-copy { min-width: 0; flex: 1; }
 	.mobile-now-copy > span { color: #df704c; font-size: .63rem; font-weight: 800; letter-spacing: .05em; }
-	.mobile-now-copy p { display: -webkit-box; margin: 3px 0; overflow: hidden; color: #173c32; font-size: .91rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+	.mobile-now-copy p { max-height: 4.35em; display: block; margin: 3px 0; overflow: hidden; color: #173c32; font-size: .91rem; line-height: 1.45; }
 	.mobile-now-copy small { display: -webkit-box; margin: 0; overflow: hidden; color: #748077; font-size: .7rem; line-height: 1.35; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 	.mobile-now-actions { display: grid; gap: 5px; }
 	.mobile-now-actions button { min-width: 40px; padding: .36rem; border: 0; border-radius: 8px; color: #fff; background: #235a48; font-size: .68rem; font-weight: 800; }
