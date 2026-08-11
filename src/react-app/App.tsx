@@ -228,9 +228,9 @@ function plainJapaneseText(text: string) {
 	return text.replace(/\{\{(.+?)\|.*?\}\}/g, "$1");
 }
 
-function FloatingFavoriteAction({ selectedText, notice, position, onSave }: { selectedText: string; notice: string; position: FavoritePosition | null; onSave: () => void }) {
+function FloatingFavoriteAction({ selectedText, notice, position, onSave, onPointerDown }: { selectedText: string; notice: string; position: FavoritePosition | null; onSave: () => void; onPointerDown: () => void }) {
 	if ((!selectedText && !notice) || !position) return null;
-	return <div className={`floating-favorite-action ${position.placement}`} style={{ left: position.left, top: position.top }} aria-live="polite">
+	return <div className={`floating-favorite-action ${position.placement}`} style={{ left: position.left, top: position.top }} aria-live="polite" onPointerDownCapture={onPointerDown}>
 		{selectedText ? <><span>收藏所选内容</span><button type="button" onClick={onSave}>收藏</button></> : <span>{notice}</span>}
 	</div>;
 }
@@ -238,6 +238,7 @@ function FloatingFavoriteAction({ selectedText, notice, position, onSave }: { se
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const pendingSeekRef = useRef<number | null>(null);
+	const favoriteActionPointerRef = useRef(false);
 	const [initialProgress] = useState(readSavedProgress);
 	const resumeRef = useRef<SavedProgress | null>(initialProgress.currentTime > 0 ? initialProgress : null);
 	const [courseId, setCourseId] = useState<CourseId>(initialProgress.courseId);
@@ -340,12 +341,20 @@ function App() {
 		const onSelectionChange = () => {
 			const selection = window.getSelection();
 			if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+				if (!favoriteActionPointerRef.current) {
+					setSelectedText("");
+					setFavoriteNotice("");
+					setFavoritePosition(null);
+				}
 				return;
 			}
 			const anchor = selection.anchorNode;
 			const element = anchor instanceof Element ? anchor : anchor?.parentElement;
 			const transcriptElement = element?.closest<HTMLElement>(".selectable-transcript");
 			if (!transcriptElement) {
+				setSelectedText("");
+				setFavoriteNotice("");
+				setFavoritePosition(null);
 				return;
 			}
 			const fragment = selection.getRangeAt(0).cloneContents();
@@ -460,6 +469,18 @@ function App() {
 		setSelectedText("");
 		setFavoriteNotice("");
 		setFavoritePosition(null);
+	}
+
+	function openTranscript() {
+		setSelectedText("");
+		setFavoriteNotice("");
+		setFavoritePosition(null);
+		setShowTranscript(true);
+	}
+
+	function keepFavoriteActionDuringClick() {
+		favoriteActionPointerRef.current = true;
+		window.setTimeout(() => { favoriteActionPointerRef.current = false; }, 250);
 	}
 
 	function seekTo(value: number) {
@@ -719,8 +740,8 @@ function App() {
 					</article>
 
 					<div className="mobile-now-playing" aria-label="当前播放文案" aria-live="polite">
-						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p>{plainJapaneseText(nowPlayingText)}</p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}</div>
-						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" className={showNowPlayingTranslation ? "active" : ""} onClick={() => setShowNowPlayingTranslation((shown) => !shown)} aria-pressed={showNowPlayingTranslation}>{showNowPlayingTranslation ? "译文" : "翻译"}</button><button type="button" onClick={() => { setSelectedText(""); setShowTranscript(true); }}>全文</button></div>
+						<div className="mobile-now-copy selectable-transcript" role="button" tabIndex={0} onClick={() => { if (!window.getSelection()?.toString().trim()) openTranscript(); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTranscript(); } }}><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p>{plainJapaneseText(nowPlayingText)}</p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}</div>
+						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" className={showNowPlayingTranslation ? "active" : ""} onClick={() => setShowNowPlayingTranslation((shown) => !shown)} aria-pressed={showNowPlayingTranslation}>{showNowPlayingTranslation ? "译文" : "翻译"}</button><button type="button" onClick={openTranscript}>全文</button></div>
 					</div>
 
 				</section>
@@ -778,7 +799,7 @@ function App() {
 					</div>
 				</div>}
 			</>}
-			<FloatingFavoriteAction selectedText={selectedText} notice={favoriteNotice} position={favoritePosition} onSave={saveSelectedText} />
+			<FloatingFavoriteAction selectedText={selectedText} notice={favoriteNotice} position={favoritePosition} onSave={saveSelectedText} onPointerDown={keepFavoriteActionDuringClick} />
 
 			<footer>© 2026 日本語Shadowing · 日语 Shadowing 练习</footer>
 			<audio
