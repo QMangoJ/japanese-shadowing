@@ -229,6 +229,7 @@ function FloatingFavoriteAction({ selectedText, notice, position, onSave }: { se
 
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
+	const pendingSeekRef = useRef<number | null>(null);
 	const [initialProgress] = useState(readSavedProgress);
 	const resumeRef = useRef<SavedProgress | null>(initialProgress.currentTime > 0 ? initialProgress : null);
 	const [courseId, setCourseId] = useState<CourseId>(initialProgress.courseId);
@@ -427,12 +428,23 @@ function App() {
 	function seekTo(value: number) {
 		const audio = audioRef.current;
 		if (!audio || !Number.isFinite(value)) return;
-		const maximum = Number.isFinite(audio.duration) ? audio.duration : duration;
+		const maximum = duration || (Number.isFinite(audio.duration) ? audio.duration : 0);
 		const nextTime = Math.max(0, Math.min(value, maximum || value));
-		if (typeof audio.fastSeek === "function") audio.fastSeek(nextTime);
-		else audio.currentTime = nextTime;
+		pendingSeekRef.current = nextTime;
 		setCurrentTime(nextTime);
 		resumeRef.current = null;
+		if (audio.readyState >= HTMLMediaElement.HAVE_METADATA && Number.isFinite(audio.duration)) {
+			audio.currentTime = nextTime;
+			pendingSeekRef.current = null;
+		}
+	}
+
+	function seekFromPointer(event: React.PointerEvent<HTMLInputElement>) {
+		if (duration <= 0) return;
+		const track = event.currentTarget.getBoundingClientRect();
+		if (track.width <= 0) return;
+		const progress = Math.max(0, Math.min(1, (event.clientX - track.left) / track.width));
+		seekTo(progress * duration);
 	}
 
 	function saveSelectedText() {
@@ -532,6 +544,14 @@ function App() {
 	function handleLoadedMetadata(event: React.SyntheticEvent<HTMLAudioElement>) {
 		const audio = event.currentTarget;
 		setDuration(audio.duration);
+		const pendingSeek = pendingSeekRef.current;
+		if (pendingSeek !== null) {
+			const nextTime = Math.min(pendingSeek, Math.max(0, audio.duration - .1));
+			audio.currentTime = nextTime;
+			setCurrentTime(nextTime);
+			pendingSeekRef.current = null;
+			return;
+		}
 		const saved = resumeRef.current;
 		if (!saved || saved.courseId !== courseId || saved.currentIndex !== currentIndex || saved.currentSentence !== currentSentence) return;
 		const resumeTime = Math.min(saved.currentTime, Math.max(0, audio.duration - .1));
@@ -627,8 +647,10 @@ function App() {
 								max={duration || 0}
 								step="0.1"
 								value={Math.min(currentTime, duration || 0)}
+								onPointerDown={seekFromPointer}
 								onInput={(event) => seekTo(Number(event.currentTarget.value))}
 								onChange={(event) => seekTo(Number(event.currentTarget.value))}
+								onClick={(event) => seekTo(Number(event.currentTarget.value))}
 							/>
 							<span>{formatTime(duration)}</span>
 						</div>
@@ -718,6 +740,7 @@ function App() {
 				loop={loop}
 				onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
 				onLoadedMetadata={handleLoadedMetadata}
+				onSeeked={(event) => setCurrentTime(event.currentTarget.currentTime)}
 				onPlay={() => setIsPlaying(true)}
 				onPause={() => setIsPlaying(false)}
 				onEnded={handleEnded}
