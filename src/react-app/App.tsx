@@ -228,6 +228,19 @@ function plainJapaneseText(text: string) {
 	return text.replace(/\{\{(.+?)\|.*?\}\}/g, "$1");
 }
 
+function scrollTranscriptRowToReadingPosition(row: HTMLElement) {
+	const rowRect = row.getBoundingClientRect();
+	const readingLine = .42;
+	const sheetPanel = row.closest<HTMLElement>(".sheet-panel");
+	if (sheetPanel) {
+		const panelRect = sheetPanel.getBoundingClientRect();
+		const rowCenter = rowRect.top - panelRect.top + rowRect.height / 2;
+		sheetPanel.scrollTo({ top: sheetPanel.scrollTop + rowCenter - sheetPanel.clientHeight * readingLine, behavior: "smooth" });
+		return;
+	}
+	window.scrollTo({ top: window.scrollY + rowRect.top + rowRect.height / 2 - window.innerHeight * readingLine, behavior: "smooth" });
+}
+
 function FloatingFavoriteAction({ selectedText, notice, position, onSave, onPointerDown }: { selectedText: string; notice: string; position: FavoritePosition | null; onSave: () => void; onPointerDown: () => void }) {
 	if ((!selectedText && !notice) || !position) return null;
 	return <div className={`floating-favorite-action ${position.placement}`} style={{ left: position.left, top: position.top }} aria-live="polite" onPointerDownCapture={onPointerDown}>
@@ -416,7 +429,7 @@ function App() {
 		if (!transcript) return;
 		const frame = window.requestAnimationFrame(() => {
 			document.querySelectorAll<HTMLElement>(".transcript-row.active").forEach((row) => {
-				row.scrollIntoView({ behavior: "smooth", block: "nearest" });
+				if (row.getClientRects().length > 0) scrollTranscriptRowToReadingPosition(row);
 			});
 		});
 		return () => window.cancelAnimationFrame(frame);
