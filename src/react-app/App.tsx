@@ -245,6 +245,7 @@ function App() {
 	const [speed, setSpeed] = useState(1);
 	const [loop, setLoop] = useState(false);
 	const [translation, setTranslation] = useState<"zh" | "en">("zh");
+	const [showNowPlayingTranslation, setShowNowPlayingTranslation] = useState(false);
 	const playAfterChangeRef = useRef(false);
 	const [playRequest, setPlayRequest] = useState(0);
 	const [selectedUnit, setSelectedUnit] = useState(() => courses[initialProgress.courseId].units.find((item) => initialProgress.currentIndex + 1 >= item.start && initialProgress.currentIndex + 1 <= item.end)?.number ?? 1);
@@ -654,8 +655,18 @@ function App() {
 						</div>
 
 						<div className="now-playing-preview" aria-live="polite">
-							<p className="now-playing-japanese"><FuriganaText text={nowPlayingText} /></p>
-							<p className="now-playing-translation">{nowPlayingTranslation}</p>
+							<div className="now-playing-copy">
+								<p className="now-playing-japanese"><FuriganaText text={nowPlayingText} /></p>
+								{showNowPlayingTranslation && <p className="now-playing-translation">{nowPlayingTranslation}</p>}
+							</div>
+							<button
+								type="button"
+								className={`now-playing-translation-toggle ${showNowPlayingTranslation ? "active" : ""}`}
+								onClick={() => setShowNowPlayingTranslation((shown) => !shown)}
+								aria-pressed={showNowPlayingTranslation}
+							>
+								{showNowPlayingTranslation ? "隐藏翻译" : "显示翻译"}
+							</button>
 						</div>
 
 						<div className="waveform" aria-hidden="true">
@@ -696,8 +707,8 @@ function App() {
 					</article>
 
 					<div className="mobile-now-playing" aria-label="当前播放文案" aria-live="polite">
-						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p><small>{nowPlayingTranslation}</small></div>
-						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" onClick={() => { setSelectedText(""); setShowTranscript(true); }}>全文</button></div>
+						<div className="mobile-now-copy selectable-transcript"><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}</div>
+						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" className={showNowPlayingTranslation ? "active" : ""} onClick={() => setShowNowPlayingTranslation((shown) => !shown)} aria-pressed={showNowPlayingTranslation}>{showNowPlayingTranslation ? "译文" : "翻译"}</button><button type="button" onClick={() => { setSelectedText(""); setShowTranscript(true); }}>全文</button></div>
 					</div>
 
 				</section>
