@@ -10,7 +10,7 @@ Run from the repository root:
   python3 scripts/generate_furigana.py
   python3 scripts/generate_furigana.py --only 10
 
-Input/output: public/transcripts/**/jp-ruby/*.txt
+Input/output: public/transcripts/jp/*.txt -> public/transcripts/jp-ruby/*.txt
 """
 
 from __future__ import annotations
@@ -72,10 +72,12 @@ def ruby_document(text: str) -> str:
     return "\n".join(lines) + ending
 
 
-def ruby_directories() -> list[Path]:
+def ruby_directories() -> list[tuple[Path, Path]]:
     return [
-        ROOT / "public" / "transcripts" / "jp-ruby",
-        ROOT / "public" / "transcripts" / "intermediate" / "jp-ruby",
+        (ROOT / "public" / "transcripts" / "jp", ROOT / "public" / "transcripts" / "jp-ruby"),
+        # The intermediate book source PDF has not yet been supplied, so its
+        # existing ruby transcript remains the canonical source for now.
+        (ROOT / "public" / "transcripts" / "intermediate" / "jp-ruby", ROOT / "public" / "transcripts" / "intermediate" / "jp-ruby"),
     ]
 
 
@@ -87,14 +89,14 @@ def main() -> None:
 
     targets = {f"{number:02d}.txt" for number in options.only} if options.only else None
     generated = 0
-    for ruby_dir in ruby_directories():
-        for source in sorted(ruby_dir.glob("*.txt")):
+    for source_dir, output_dir in ruby_directories():
+        for source in sorted(source_dir.glob("*.txt")):
             if targets and source.name not in targets:
                 continue
             source_text = source.read_text(encoding="utf-8")
             output = ruby_document(source_text)
             if not options.check:
-                source.write_text(output, encoding="utf-8")
+                (output_dir / source.name).write_text(output, encoding="utf-8")
             generated += 1
     action = "Checked" if options.check else "Generated"
     print(f"{action} complete ruby text for {generated} transcript files.")

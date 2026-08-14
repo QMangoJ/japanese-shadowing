@@ -139,12 +139,15 @@ function formatTime(seconds: number) {
 	return `${minutes}:${remaining}`;
 }
 
-function extractSpokenLines(raw: string, attachReadings = false) {
+function extractSpokenLines(raw: string) {
 	const spoken: string[] = [];
 	let pendingSpeaker: string | null = null;
 	for (const untrimmed of raw.split("\n")) {
 		const line = untrimmed.trim();
-		const match = line.match(/([AB])\s*[:：]\s*(.*)$/i);
+		if (!line || /^[ぁ-ゖァ-ヺー・]+$/.test(line)) continue;
+		// OCR frequently prefixes a speaker marker with a page ornament (CB, QB,
+		// 2B, etc.). The final A/B immediately before the colon is authoritative.
+		const match = line.match(/^.*([AB])\s*[:：]\s*(.*)$/i);
 		if (match) {
 			const text = match[2].trim();
 			if (text) {
@@ -169,11 +172,7 @@ function extractSpokenLines(raw: string, attachReadings = false) {
 			spoken.push(`${missingA ? "A" : "B"}: ${(missingA?.[1] ?? malformedB?.[1] ?? "").trim().replace(/太野/g, "大野")}`);
 			continue;
 		}
-		if (attachReadings && spoken.length > 0 && /^[ぁ-ゖァ-ヺー・]+$/.test(line)) {
-			spoken[spoken.length - 1] += `（${line}）`;
-			continue;
-		}
-		if (spoken.length > 0 && line && !/^(?:Unit|section|[0-9①-⑳]+|[（(].*[）)])$/.test(line)) {
+		if (spoken.length > 0 && !/^(?:Unit|section|[0-9①-⑳]+|[A-Za-z]|[（(].*[）)])$/.test(line)) {
 			spoken[spoken.length - 1] += `\n${line}`;
 		}
 	}
@@ -411,7 +410,7 @@ function App() {
 		void Promise.all(languagePaths.map((source) => fetch(source).then((response) => response.text())))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
-				const japaneseLines = extractSpokenLines(jp, true);
+				const japaneseLines = extractSpokenLines(jp);
 				const chineseLines = extractSpokenLines(zh);
 				const englishLines = extractSpokenLines(en);
 				const isNarrative = !course.trackAudio && current.index >= 55;

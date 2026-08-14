@@ -32,24 +32,25 @@ const sourcePages = [
 ];
 
 function parseArgs(argv) {
-	const result = { all: false, images: "../tmp/pdfs/book-pages", output: "../tmp/pdfs/ocr-candidates", section: [] };
+	const result = { all: false, engine: "tesseract", images: "../tmp/pdfs/book-pages", output: "../tmp/pdfs/ocr-candidates", section: [] };
 	for (let index = 0; index < argv.length; index += 1) {
 		const value = argv[index];
 		if (value === "--all") result.all = true;
 		else if (value === "--images") result.images = argv[++index] ?? result.images;
 		else if (value === "--output") result.output = argv[++index] ?? result.output;
+		else if (value === "--engine") result.engine = argv[++index] ?? result.engine;
 		else if (value === "--section") result.section.push(...(argv[++index] ?? "").split(",").map(Number));
 		else if (value === "--help") {
-			console.log("Usage: node scripts/reprocess-book-ocr.mjs (--section 10,11 | --all) [--images DIR] [--output DIR]");
+			console.log("Usage: node scripts/reprocess-book-ocr.mjs (--section 10,11 | --all) [--images DIR] [--output DIR] [--engine tesseract|vision]");
 			process.exit(0);
 		}
 	}
 	return result;
 }
 
-function run(command, args) {
+function run(command, args, options = {}) {
 	return new Promise((resolveRun, reject) => {
-		const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+		const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"], ...options });
 		let stdout = "";
 		let stderr = "";
 		child.stdout.on("data", (chunk) => { stdout += chunk; });
@@ -95,7 +96,17 @@ async function recognize(image, language, psm) {
 	return { text: cleanText(text, language), confidence: confidence(tsv) };
 }
 
-async function processSection(section, imageDirectory, outputDirectory) {
+async function recognizeVision(image, language) {
+	const script = resolve("scripts/vision-ocr.swift");
+	const cacheDirectory = resolve("tmp/swift-module-cache");
+	await mkdir(cacheDirectory, { recursive: true });
+	const text = await run("swift", [script, image, language], {
+		env: { ...process.env, CLANG_MODULE_CACHE_PATH: cacheDirectory },
+	});
+	return { text: cleanText(text, language), confidence: { average: null, wordCount: null, lowConfidenceTokens: [] } };
+}
+
+async function processSection(section, imageDirectory, outputDirectory, engine) {
 	const sourcePage = sourcePages[section - 1];
 	if (!sourcePage) throw new Error(`Unknown section: ${section}`);
 	const sectionId = String(section).padStart(2, "0");
@@ -112,14 +123,22 @@ async function processSection(section, imageDirectory, outputDirectory) {
 	const englishCrop = join(sectionDirectory, "en-source.jpg");
 	const chineseCrop = join(sectionDirectory, "zh-source.jpg");
 	await Promise.all([
-		crop(japaneseImage, japaneseCrop, { height: 2260, width: 1640, top: 130, left: 55 }),
-		crop(japaneseImage, rubyCrop, { height: 2260, width: 1640, top: 130, left: 55 }),
-		// Translation-page columns: English, Chinese, then Korean (ignored).
-		crop(translationsImage, englishCrop, { height: 2200, width: 560, top: 160, left: 150 }),
-		crop(translationsImage, chineseCrop, { height: 2200, width: 480, top: 160, left: 720 }),
+		crop(japaneseImage, japaneseCrop, { height: 2550, width: 1900, top: 180, left: 65 }),
+		crop(japaneseImage, rubyCrop, { height: 2550, width: 1900, top: 180, left: 65 }),
+		// Coordinates are for 350 DPI rendering of the 1031 x 1500 point book pages.
+		// Keep the English and Chinese columns independent; Korean is intentionally ignored.
+		crop(translationsImage, englishCrop, { height: 2600, width: 640, top: 210, left: 180 }),
+		crop(translationsImage, chineseCrop, { height: 2600, width: 620, top: 210, left: 800 }),
 	]);
 
-	const [jp, ruby, en, zh] = await Promise.all([
+	const vision = engine === "vision";
+	if (!vision && engine !== "tesseract") throw new Error(`Unknown OCR engine: ${engine}`);
+	const [jp, ruby, en, zh] = await Promise.all(vision ? [
+		recognizeVision(japaneseCrop, "ja-JP"),
+		recognizeVision(rubyCrop, "ja-JP"),
+		recognizeVision(englishCrop, "en-US"),
+		recognizeVision(chineseCrop, "zh-Hans"),
+	] : [
 		recognize(japaneseCrop, "jpn", 4),
 		recognize(rubyCrop, "jpn", 11),
 		recognize(englishCrop, "eng", 6),
@@ -134,7 +153,8 @@ async function processSection(section, imageDirectory, outputDirectory) {
 			section,
 			sourcePages: { japanese: sourcePage, translations: sourcePage + 1 },
 			confidence: { japanese: jp.confidence, furiganaCandidates: ruby.confidence, english: en.confidence, chinese: zh.confidence },
-			status: "candidate - do not publish without sentence/audio validation",
+		engine,
+		status: "candidate - do not publish without sentence/audio validation",
 		}, null, 2)}\n`),
 	]);
 	await Promise.all([rm(japaneseCrop), rm(rubyCrop), rm(englishCrop), rm(chineseCrop)]);
@@ -150,7 +170,7 @@ const outputDirectory = resolve(options.output);
 await mkdir(outputDirectory, { recursive: true });
 const results = [];
 for (const section of sections) {
-	results.push(await processSection(section, imageDirectory, outputDirectory));
+	results.push(await processSection(section, imageDirectory, outputDirectory, options.engine));
 	console.log(`Section ${String(section).padStart(2, "0")} complete`);
 }
 await writeFile(join(outputDirectory, "summary.json"), `${JSON.stringify({ generatedAt: new Date().toISOString(), source: basename(imageDirectory), results }, null, 2)}\n`);
