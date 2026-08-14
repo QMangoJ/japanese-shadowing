@@ -142,6 +142,20 @@ function formatTime(seconds: number) {
 function extractSpokenLines(raw: string) {
 	const spoken: string[] = [];
 	let pendingSpeaker: string | null = null;
+	const appendContinuation = (continuation: string) => {
+		const previous = spoken[spoken.length - 1];
+		if (!previous) return;
+		const text = continuation.trim();
+		if (!text) return;
+		// OCR wraps printed lines mid-sentence. Preserve only speaker changes as
+		// line breaks; join the visual wraps back into one selectable sentence.
+		if (previous.endsWith("-")) {
+			spoken[spoken.length - 1] = `${previous.slice(0, -1)}${text}`;
+			return;
+		}
+		const needsSpace = /[A-Za-z0-9]$/.test(previous) && /^[A-Za-z0-9]/.test(text);
+		spoken[spoken.length - 1] = `${previous}${needsSpace ? " " : ""}${text}`;
+	};
 	for (const untrimmed of raw.split("\n")) {
 		const line = untrimmed.trim();
 		if (!line || /^[ぁ-ゖァ-ヺー・]+$/.test(line)) continue;
@@ -173,7 +187,7 @@ function extractSpokenLines(raw: string) {
 			continue;
 		}
 		if (spoken.length > 0 && !/^(?:Unit|section|[0-9①-⑳]+|[A-Za-z]|[（(].*[）)])$/.test(line)) {
-			spoken[spoken.length - 1] += `\n${line}`;
+			appendContinuation(line);
 		}
 	}
 	return spoken;
