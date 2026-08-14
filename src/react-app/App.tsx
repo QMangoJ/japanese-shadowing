@@ -139,29 +139,66 @@ function formatTime(seconds: number) {
 	return `${minutes}:${remaining}`;
 }
 
+function isOcrNoise(line: string) {
+	return !line ||
+		/^[ぁ-ゖァ-ヺー・]+$/.test(line) ||
+		/^(?:Unit|section|[0-9①-⑳]+|[A-Za-z])$/.test(line);
+}
+
+function appendOcrContinuation(lines: string[], continuation: string) {
+	const previous = lines[lines.length - 1];
+	const text = continuation.trim();
+	if (!previous || !text) return;
+	if (/^[（(].*[）)]$/.test(previous)) {
+		lines.push(text);
+		return;
+	}
+	if (previous.endsWith("-")) {
+		lines[lines.length - 1] = `${previous.slice(0, -1)}${text}`;
+		return;
+	}
+	const needsSpace = /[A-Za-z0-9]$/.test(previous) && /^[A-Za-z0-9]/.test(text);
+	lines[lines.length - 1] = `${previous}${needsSpace ? " " : ""}${text}`;
+}
+
+function normalizeOcrBlock(raw: string) {
+	const normalized: string[] = [];
+	for (const untrimmed of raw.split("\n")) {
+		const line = untrimmed.trim();
+		if (/^[AB]$/i.test(line)) {
+			normalized.push(line.toUpperCase());
+			continue;
+		}
+		if (isOcrNoise(line)) continue;
+		// In the scanned intermediate book, a colon is sometimes recognized as
+		// i / I / | (for example, "Bi わかってる"). Treat those as speaker marks.
+		const speaker = line.match(/^.*([AB])\s*(?::|：|[iI|])\s*(.*)$/i);
+		if (speaker) {
+			const name = speaker[1].toUpperCase();
+			const text = speaker[2].trim();
+			normalized.push(text ? `${name}: ${text.replace(/太野/g, "大野")}` : name);
+			continue;
+		}
+		// Book headings are semantic paragraph boundaries; all other breaks are
+		// scan-layout wraps and should not appear as a new line on the site.
+		if (/^[（(].*[）)]$/.test(line)) {
+			normalized.push(line);
+			continue;
+		}
+		appendOcrContinuation(normalized, line);
+	}
+	return normalized.join("\n");
+}
+
 function extractSpokenLines(raw: string) {
 	const spoken: string[] = [];
 	let pendingSpeaker: string | null = null;
-	const appendContinuation = (continuation: string) => {
-		const previous = spoken[spoken.length - 1];
-		if (!previous) return;
-		const text = continuation.trim();
-		if (!text) return;
-		// OCR wraps printed lines mid-sentence. Preserve only speaker changes as
-		// line breaks; join the visual wraps back into one selectable sentence.
-		if (previous.endsWith("-")) {
-			spoken[spoken.length - 1] = `${previous.slice(0, -1)}${text}`;
-			return;
-		}
-		const needsSpace = /[A-Za-z0-9]$/.test(previous) && /^[A-Za-z0-9]/.test(text);
-		spoken[spoken.length - 1] = `${previous}${needsSpace ? " " : ""}${text}`;
-	};
 	for (const untrimmed of raw.split("\n")) {
 		const line = untrimmed.trim();
-		if (!line || /^[ぁ-ゖァ-ヺー・]+$/.test(line)) continue;
+		if (isOcrNoise(line)) continue;
 		// OCR frequently prefixes a speaker marker with a page ornament (CB, QB,
 		// 2B, etc.). The final A/B immediately before the colon is authoritative.
-		const match = line.match(/^.*([AB])\s*[:：]\s*(.*)$/i);
+		const match = line.match(/^.*([AB])\s*(?::|：|[iI|])\s*(.*)$/i);
 		if (match) {
 			const text = match[2].trim();
 			if (text) {
@@ -186,8 +223,8 @@ function extractSpokenLines(raw: string) {
 			spoken.push(`${missingA ? "A" : "B"}: ${(missingA?.[1] ?? malformedB?.[1] ?? "").trim().replace(/太野/g, "大野")}`);
 			continue;
 		}
-		if (spoken.length > 0 && !/^(?:Unit|section|[0-9①-⑳]+|[A-Za-z]|[（(].*[）)])$/.test(line)) {
-			appendContinuation(line);
+		if (spoken.length > 0 && !/^[（(].*[）)]$/.test(line)) {
+			appendOcrContinuation(spoken, line);
 		}
 	}
 	return spoken;
@@ -216,7 +253,7 @@ function groupNarratives(raw: string, sectionIndex: number) {
 		? [/^（(?:意見|Stating|意见)/, /^（(?:面接|At an Interview|面试)/]
 		: [/^（(?:旅先|What Happened|在旅行)/, /^（(?:映画|Impression|电影)/];
 	const lines = raw.split("\n").map((line) => line.trim());
-	const starts = headingPatterns.map((pattern) => lines.findIndex((line) => pattern.test(line)));
+	const starts = headingPatterns.map((pattern) => lines.findIndex((line) => pattern.test(plainJapaneseText(line))));
 	if (starts.some((start) => start < 0)) return ["文本待校对", "文本待校对"];
 	return starts.map((start, index) => lines.slice(start, starts[index + 1] ?? lines.length)
 		.filter((line) => line && !/^[ぁ-ゖァ-ヺー・]+$/.test(line) && !/^(?:Unit|section|[0-9①-⑳]+)$/.test(line))
@@ -424,14 +461,17 @@ function App() {
 		void Promise.all(languagePaths.map((source) => fetch(source).then((response) => response.text())))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
-				const japaneseLines = extractSpokenLines(jp);
-				const chineseLines = extractSpokenLines(zh);
-				const englishLines = extractSpokenLines(en);
+				const normalizedJapanese = normalizeOcrBlock(jp);
+				const normalizedChinese = normalizeOcrBlock(zh);
+				const normalizedEnglish = normalizeOcrBlock(en);
+				const japaneseLines = extractSpokenLines(normalizedJapanese);
+				const chineseLines = extractSpokenLines(normalizedChinese);
+				const englishLines = extractSpokenLines(normalizedEnglish);
 				const isNarrative = !course.trackAudio && current.index >= 55;
 				setTranscript({
-					jp: course.trackAudio ? [jp] : isNarrative ? groupNarratives(jp, current.index) : groupSentences(japaneseLines, current.sentenceCount, current.index),
-					zh: course.trackAudio ? [zh] : isNarrative ? groupNarratives(zh, current.index) : groupSentences(chineseLines, current.sentenceCount, current.index),
-					en: course.trackAudio ? [en] : isNarrative ? groupNarratives(en, current.index) : groupSentences(englishLines, current.sentenceCount, current.index),
+					jp: course.trackAudio ? [normalizedJapanese] : isNarrative ? groupNarratives(normalizedJapanese, current.index) : groupSentences(japaneseLines, current.sentenceCount, current.index),
+					zh: course.trackAudio ? [normalizedChinese] : isNarrative ? groupNarratives(normalizedChinese, current.index) : groupSentences(chineseLines, current.sentenceCount, current.index),
+					en: course.trackAudio ? [normalizedEnglish] : isNarrative ? groupNarratives(normalizedEnglish, current.index) : groupSentences(englishLines, current.sentenceCount, current.index),
 				});
 			})
 			.catch(() => { if (!disposed) setTranscript(null); });
