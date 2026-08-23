@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createHybridStore } from "./hybridStorage";
+import { getSentenceInsight, type SentenceInsight } from "./sentenceAnalysis";
 import "./App.css";
 
 type PracticeItem = {
@@ -298,6 +299,30 @@ function FloatingFavoriteAction({ selectedText, notice, position, onSave, onPoin
 	</div>;
 }
 
+function SentenceAnalysis({ insight, expanded, onToggle, compact = false }: { insight: SentenceInsight | null; expanded: boolean; onToggle: () => void; compact?: boolean }) {
+	const [selectedWord, setSelectedWord] = useState<string | null>(null);
+	if (!insight) return null;
+	const selected = insight.vocabulary.find((word) => word.term === selectedWord) ?? insight.vocabulary[0] ?? null;
+	return <div className={`sentence-analysis ${compact ? "compact" : ""}`} onClick={(event) => event.stopPropagation()}>
+		<button className={`analysis-toggle ${expanded ? "active" : ""}`} type="button" onClick={onToggle} aria-expanded={expanded}>
+			{expanded ? "收起单词与语法" : "查看单词与语法"}
+		</button>
+		{expanded && <div className="analysis-content">
+			<section className="analysis-section" aria-label="生词解析">
+				<p className="analysis-label">生词</p>
+				{insight.vocabulary.length > 0 ? <>
+					<div className="word-pills">{insight.vocabulary.map((word) => <button key={word.term} type="button" className={selected?.term === word.term ? "selected" : ""} onClick={() => setSelectedWord(word.term)}>{word.term}</button>)}</div>
+					{selected && <p className="word-detail"><b>{selected.term}{selected.reading ? `（${selected.reading}）` : ""}</b>：{selected.meaning}<span>{selected.detail}</span></p>}
+				</> : <p className="analysis-empty">这句以基础表达为主；先结合译文跟读即可。</p>}
+			</section>
+			<section className="analysis-section" aria-label="语法解析">
+				<p className="analysis-label">语法</p>
+				{insight.grammar.length > 0 ? <ul className="grammar-insights">{insight.grammar.map((item) => <li key={item.point}><b>{item.point}</b><span>{item.explanation}</span></li>)}</ul> : <p className="analysis-empty">本句是基础陈述或会话回应，重点留意语序和礼貌语气。</p>}
+			</section>
+		</div>}
+	</div>;
+}
+
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const pendingSeekRef = useRef<number | null>(null);
@@ -314,6 +339,7 @@ function App() {
 	const [loop, setLoop] = useState(false);
 	const [translation, setTranslation] = useState<"zh" | "en">("zh");
 	const [showNowPlayingTranslation, setShowNowPlayingTranslation] = useState(false);
+	const [expandedAnalysisKey, setExpandedAnalysisKey] = useState<string | null>(null);
 	const playAfterChangeRef = useRef(false);
 	const [playRequest, setPlayRequest] = useState(0);
 	const [selectedUnit, setSelectedUnit] = useState(() => courses[initialProgress.courseId].units.find((item) => initialProgress.currentIndex + 1 >= item.start && initialProgress.currentIndex + 1 <= item.end)?.number ?? 1);
@@ -337,6 +363,8 @@ function App() {
 	const unit = units.find((item) => item.number === selectedUnit) ?? units[0];
 	const nowPlayingText = transcript?.jp[currentSentence - 1] ?? "正在加载当前文案…";
 	const nowPlayingTranslation = transcript ? (translation === "zh" ? transcript.zh[currentSentence - 1] : transcript.en[currentSentence - 1]) : "";
+	const nowPlayingAnalysis = courseId === "beginner" ? getSentenceInsight(current.index, nowPlayingText) : null;
+	const nowPlayingAnalysisKey = `${courseId}-${current.index}-${currentSentence}`;
 	const filteredLessons = useMemo(() => {
 		const normalizedQuery = query.trim().toLowerCase();
 		return lessons.filter((lesson) => {
@@ -757,6 +785,7 @@ function App() {
 							<div className="now-playing-copy">
 								<p className="now-playing-japanese">{plainJapaneseText(nowPlayingText)}</p>
 								{showNowPlayingTranslation && <p className="now-playing-translation">{nowPlayingTranslation}</p>}
+								<SentenceAnalysis insight={nowPlayingAnalysis} expanded={expandedAnalysisKey === nowPlayingAnalysisKey} onToggle={() => setExpandedAnalysisKey((key) => key === nowPlayingAnalysisKey ? null : nowPlayingAnalysisKey)} compact />
 							</div>
 							<button
 								type="button"
@@ -806,8 +835,8 @@ function App() {
 					</article>
 
 					<div className="mobile-now-playing" aria-label="当前播放文案" aria-live="polite">
-						<div className="mobile-now-copy selectable-transcript" role="button" tabIndex={0} onClick={() => { if (!window.getSelection()?.toString().trim()) openTranscript(); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTranscript(); } }}><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p>{plainJapaneseText(nowPlayingText)}</p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}</div>
-						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" className={showNowPlayingTranslation ? "active" : ""} onClick={() => setShowNowPlayingTranslation((shown) => !shown)} aria-pressed={showNowPlayingTranslation}>{showNowPlayingTranslation ? "译文" : "翻译"}</button><button type="button" onClick={openTranscript}>全文</button></div>
+						<div className="mobile-now-copy selectable-transcript" role="button" tabIndex={0} onClick={() => { if (!window.getSelection()?.toString().trim()) openTranscript(); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTranscript(); } }}><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p>{plainJapaneseText(nowPlayingText)}</p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}<SentenceAnalysis insight={nowPlayingAnalysis} expanded={expandedAnalysisKey === nowPlayingAnalysisKey} onToggle={() => { setShowNowPlayingTranslation(true); setExpandedAnalysisKey((key) => key === nowPlayingAnalysisKey ? null : nowPlayingAnalysisKey); }} compact /></div>
+						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" className={showNowPlayingTranslation ? "active" : ""} onClick={() => setShowNowPlayingTranslation((shown) => !shown)} aria-pressed={showNowPlayingTranslation}>{showNowPlayingTranslation ? "译文" : "翻译"}</button>{nowPlayingAnalysis && <button type="button" className={expandedAnalysisKey === nowPlayingAnalysisKey ? "active" : ""} onClick={() => { setShowNowPlayingTranslation(true); setExpandedAnalysisKey((key) => key === nowPlayingAnalysisKey ? null : nowPlayingAnalysisKey); }} aria-pressed={expandedAnalysisKey === nowPlayingAnalysisKey}>解析</button>}<button type="button" onClick={openTranscript}>全文</button></div>
 					</div>
 
 				</section>
@@ -843,15 +872,20 @@ function App() {
 						</div>
 					</div>
 					{transcript ? <div className="transcript-list">
-						{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
+						{transcript.jp.map((japanese, index) => {
+							const analysisKey = `${courseId}-${current.index}-${index + 1}`;
+							const insight = courseId === "beginner" ? getSentenceInsight(current.index, japanese) : null;
+							return <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
 							<button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => toggleSentencePlayback(index + 1)} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}>
 								<span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b>
 							</button>
 							<div className="transcript-text selectable-transcript">
 								<p className="japanese-text"><FuriganaText text={japanese} /></p>
 								<p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p>
+								<SentenceAnalysis insight={insight} expanded={expandedAnalysisKey === analysisKey} onToggle={() => setExpandedAnalysisKey((key) => key === analysisKey ? null : analysisKey)} />
 							</div>
-						</article>)}
+						</article>;
+						})}
 					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
 				</section>}
 				</section>
@@ -861,7 +895,14 @@ function App() {
 			{screen === "practice" && <>
 				{showTranscript && transcript && <div className="transcript-sheet" role="dialog" aria-modal="true" aria-label="当前文本" onClick={(event) => { if (event.target === event.currentTarget) setShowTranscript(false); }}>
 					<div className="sheet-panel" onClick={(event) => event.stopPropagation()}><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button type="button" className="sheet-close" onClick={() => setShowTranscript(false)} aria-label="关闭全文">关闭</button></div>
-						<div className="transcript-list">{transcript.jp.map((japanese, index) => <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}><button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => { const isCurrentSentence = currentSentence === index + 1; toggleSentencePlayback(index + 1); if (!isCurrentSentence) setShowTranscript(false); }} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button><div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p></div></article>)}</div>
+						<div className="transcript-list">{transcript.jp.map((japanese, index) => {
+							const analysisKey = `${courseId}-${current.index}-${index + 1}`;
+							const insight = courseId === "beginner" ? getSentenceInsight(current.index, japanese) : null;
+							return <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
+								<button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => toggleSentencePlayback(index + 1)} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button>
+								<div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p><SentenceAnalysis insight={insight} expanded={expandedAnalysisKey === analysisKey} onToggle={() => setExpandedAnalysisKey((key) => key === analysisKey ? null : analysisKey)} /></div>
+							</article>;
+						})}</div>
 					</div>
 				</div>}
 			</>}
