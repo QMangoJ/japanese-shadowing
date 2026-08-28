@@ -140,6 +140,14 @@ function formatTime(seconds: number) {
 	return `${minutes}:${remaining}`;
 }
 
+function matchesAudioSource(audio: HTMLAudioElement, source: string) {
+	try {
+		return new URL(audio.currentSrc || audio.src, window.location.href).pathname === source;
+	} catch {
+		return (audio.currentSrc || audio.src).endsWith(source);
+	}
+}
+
 function isOcrNoise(line: string) {
 	return !line ||
 		/^[ぁ-ゖァ-ヺー・]+$/.test(line) ||
@@ -333,7 +341,7 @@ function SentenceAnalysis({ insight, expanded, onToggle, compact = false }: { in
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const sourceCardRef = useRef<HTMLElement>(null);
-	const pendingSeekRef = useRef<number | null>(null);
+	const loadedAudioSourceRef = useRef<string | null>(null);
 	const favoriteActionPointerRef = useRef(false);
 	const [initialProgress] = useState(readSavedProgress);
 	const resumeRef = useRef<SavedProgress | null>(initialProgress.currentTime > 0 ? initialProgress : null);
@@ -609,20 +617,17 @@ function App() {
 	function seekTo(value: number) {
 		const audio = audioRef.current;
 		if (!audio || !Number.isFinite(value)) return;
+		if (loadedAudioSourceRef.current !== audioSource || !matchesAudioSource(audio, audioSource)) return;
 		const maximum = duration || (Number.isFinite(audio.duration) ? audio.duration : 0);
-		const nextTime = Math.max(0, Math.min(value, maximum || value));
-		pendingSeekRef.current = nextTime;
+		if (maximum <= 0) return;
+		const nextTime = Math.max(0, Math.min(value, maximum));
 		setCurrentTime(nextTime);
 		resumeRef.current = null;
-		if (audio.readyState >= HTMLMediaElement.HAVE_METADATA && Number.isFinite(audio.duration)) {
-			audio.currentTime = nextTime;
-			pendingSeekRef.current = null;
-		}
+		audio.currentTime = nextTime;
 	}
 
 	function seekFromPointer(event: React.PointerEvent<HTMLElement>) {
-		const audio = audioRef.current;
-		const maximum = duration || (audio && Number.isFinite(audio.duration) ? audio.duration : 0);
+		const maximum = duration;
 		if (maximum <= 0) return;
 		const track = event.currentTarget.getBoundingClientRect();
 		if (track.width <= 0) return;
@@ -726,18 +731,13 @@ function App() {
 
 	function handleLoadedMetadata(event: React.SyntheticEvent<HTMLAudioElement>) {
 		const audio = event.currentTarget;
-		setDuration(audio.duration);
-		const pendingSeek = pendingSeekRef.current;
-		if (pendingSeek !== null) {
-			const nextTime = Math.min(pendingSeek, Math.max(0, audio.duration - .1));
-			audio.currentTime = nextTime;
-			setCurrentTime(nextTime);
-			pendingSeekRef.current = null;
-			return;
-		}
+		if (!matchesAudioSource(audio, audioSource)) return;
+		loadedAudioSourceRef.current = audioSource;
+		const loadedDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+		setDuration(loadedDuration);
 		const saved = resumeRef.current;
 		if (!saved || saved.courseId !== courseId || saved.currentIndex !== currentIndex || saved.currentSentence !== currentSentence) return;
-		const resumeTime = Math.min(saved.currentTime, Math.max(0, audio.duration - .1));
+		const resumeTime = Math.min(saved.currentTime, Math.max(0, loadedDuration - .1));
 		audio.currentTime = resumeTime;
 		setCurrentTime(resumeTime);
 		resumeRef.current = null;
@@ -839,9 +839,10 @@ function App() {
 									aria-label="播放进度"
 									type="range"
 									min="0"
-									max={duration || 0}
+									max={duration}
 									step="0.1"
-									value={Math.min(currentTime, duration || 0)}
+									value={Math.min(currentTime, duration)}
+									disabled={duration <= 0}
 									onInput={(event) => seekTo(Number(event.currentTarget.value))}
 									onChange={(event) => seekTo(Number(event.currentTarget.value))}
 								/>
@@ -945,9 +946,13 @@ function App() {
 				src={audioSource}
 				preload="metadata"
 				loop={loop}
-				onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+				onTimeUpdate={(event) => {
+					if (loadedAudioSourceRef.current === audioSource && matchesAudioSource(event.currentTarget, audioSource)) setCurrentTime(event.currentTarget.currentTime);
+				}}
 				onLoadedMetadata={handleLoadedMetadata}
-				onSeeked={(event) => setCurrentTime(event.currentTarget.currentTime)}
+				onSeeked={(event) => {
+					if (loadedAudioSourceRef.current === audioSource && matchesAudioSource(event.currentTarget, audioSource)) setCurrentTime(event.currentTarget.currentTime);
+				}}
 				onPlay={() => setIsPlaying(true)}
 				onPause={() => setIsPlaying(false)}
 				onEnded={handleEnded}
