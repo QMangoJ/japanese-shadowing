@@ -289,6 +289,13 @@ function scrollTranscriptRowToReadingPosition(row: HTMLElement) {
 		sheetPanel.scrollTo({ top: sheetPanel.scrollTop + rowCenter - sheetPanel.clientHeight * readingLine, behavior: "smooth" });
 		return;
 	}
+	const desktopTranscriptList = row.closest<HTMLElement>(".source-card .transcript-list");
+	if (desktopTranscriptList) {
+		const listRect = desktopTranscriptList.getBoundingClientRect();
+		const rowCenter = rowRect.top - listRect.top + rowRect.height / 2;
+		desktopTranscriptList.scrollTo({ top: desktopTranscriptList.scrollTop + rowCenter - desktopTranscriptList.clientHeight * readingLine, behavior: "smooth" });
+		return;
+	}
 	window.scrollTo({ top: window.scrollY + rowRect.top + rowRect.height / 2 - window.innerHeight * readingLine, behavior: "smooth" });
 }
 
@@ -325,6 +332,7 @@ function SentenceAnalysis({ insight, expanded, onToggle, compact = false }: { in
 
 function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
+	const sourceCardRef = useRef<HTMLElement>(null);
 	const pendingSeekRef = useRef<number | null>(null);
 	const favoriteActionPointerRef = useRef(false);
 	const [initialProgress] = useState(readSavedProgress);
@@ -346,6 +354,7 @@ function App() {
 	const [query, setQuery] = useState("");
 	const [transcript, setTranscript] = useState<Transcript | null>(null);
 	const [screen, setScreen] = useState<"practice" | "guide" | "favorites">("practice");
+	const [desktopTranscriptHeight, setDesktopTranscriptHeight] = useState<number | null>(null);
 	const [showTranscript, setShowTranscript] = useState(false);
 	const [favorites, setFavorites] = useState<Favorite[]>(readFavorites);
 	const [selectedText, setSelectedText] = useState("");
@@ -507,6 +516,26 @@ function App() {
 	}, [course.trackAudio, current.index, current.sentenceCount]);
 
 	useEffect(() => {
+		const sourceCard = sourceCardRef.current;
+		if (!sourceCard) return;
+		const updateHeight = () => {
+			if (window.innerWidth <= 820) {
+				setDesktopTranscriptHeight(null);
+				return;
+			}
+			const documentTop = sourceCard.getBoundingClientRect().top + window.scrollY;
+			const availableHeight = Math.max(300, Math.floor(window.innerHeight - documentTop - 20));
+			setDesktopTranscriptHeight((height) => height === availableHeight ? height : availableHeight);
+		};
+		const animationFrame = window.requestAnimationFrame(updateHeight);
+		window.addEventListener("resize", updateHeight);
+		return () => {
+			window.cancelAnimationFrame(animationFrame);
+			window.removeEventListener("resize", updateHeight);
+		};
+	}, [courseId, currentIndex, screen, transcript]);
+
+	useEffect(() => {
 		if (!transcript) return;
 		const frame = window.requestAnimationFrame(() => {
 			document.querySelectorAll<HTMLElement>(".transcript-row.active").forEach((row) => {
@@ -591,12 +620,14 @@ function App() {
 		}
 	}
 
-	function seekFromPointer(event: React.PointerEvent<HTMLInputElement>) {
-		if (duration <= 0) return;
+	function seekFromPointer(event: React.PointerEvent<HTMLElement>) {
+		const audio = audioRef.current;
+		const maximum = duration || (audio && Number.isFinite(audio.duration) ? audio.duration : 0);
+		if (maximum <= 0) return;
 		const track = event.currentTarget.getBoundingClientRect();
 		if (track.width <= 0) return;
 		const progress = Math.max(0, Math.min(1, (event.clientX - track.left) / track.width));
-		seekTo(progress * duration);
+		seekTo(progress * maximum);
 	}
 
 	function saveSelectedText() {
@@ -783,7 +814,7 @@ function App() {
 
 						<div className="now-playing-preview" aria-live="polite">
 							<div className="now-playing-copy">
-								<p className="now-playing-japanese">{plainJapaneseText(nowPlayingText)}</p>
+								<p className="now-playing-japanese"><FuriganaText text={nowPlayingText} /></p>
 								{showNowPlayingTranslation && <p className="now-playing-translation">{nowPlayingTranslation}</p>}
 								<SentenceAnalysis insight={nowPlayingAnalysis} expanded={expandedAnalysisKey === nowPlayingAnalysisKey} onToggle={() => setExpandedAnalysisKey((key) => key === nowPlayingAnalysisKey ? null : nowPlayingAnalysisKey)} compact />
 							</div>
@@ -803,18 +834,18 @@ function App() {
 
 						<div className="progress-row">
 							<span>{formatTime(currentTime)}</span>
-							<input
-								aria-label="播放进度"
-								type="range"
-								min="0"
-								max={duration || 0}
-								step="0.1"
-								value={Math.min(currentTime, duration || 0)}
-								onPointerDown={seekFromPointer}
-								onInput={(event) => seekTo(Number(event.currentTarget.value))}
-								onChange={(event) => seekTo(Number(event.currentTarget.value))}
-								onClick={(event) => seekTo(Number(event.currentTarget.value))}
-							/>
+							<div className="progress-seek" onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); seekFromPointer(event); }} onPointerMove={(event) => { if (event.currentTarget.hasPointerCapture(event.pointerId)) seekFromPointer(event); }} onPointerUp={seekFromPointer} onPointerCancel={seekFromPointer}>
+								<input
+									aria-label="播放进度"
+									type="range"
+									min="0"
+									max={duration || 0}
+									step="0.1"
+									value={Math.min(currentTime, duration || 0)}
+									onInput={(event) => seekTo(Number(event.currentTarget.value))}
+									onChange={(event) => seekTo(Number(event.currentTarget.value))}
+								/>
+							</div>
 							<span>{formatTime(duration)}</span>
 						</div>
 
@@ -835,7 +866,7 @@ function App() {
 					</article>
 
 					<div className="mobile-now-playing" aria-label="当前播放文案" aria-live="polite">
-						<div className="mobile-now-copy selectable-transcript" role="button" tabIndex={0} onClick={() => { if (!window.getSelection()?.toString().trim()) openTranscript(); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTranscript(); } }}><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p>{plainJapaneseText(nowPlayingText)}</p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}<SentenceAnalysis insight={nowPlayingAnalysis} expanded={expandedAnalysisKey === nowPlayingAnalysisKey} onToggle={() => { setShowNowPlayingTranslation(true); setExpandedAnalysisKey((key) => key === nowPlayingAnalysisKey ? null : nowPlayingAnalysisKey); }} compact /></div>
+						<div className="mobile-now-copy selectable-transcript" role="button" tabIndex={0} onClick={() => { if (!window.getSelection()?.toString().trim()) openTranscript(); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openTranscript(); } }}><span>{current.label} · {String(currentSentence).padStart(2, "0")}</span><p><FuriganaText text={nowPlayingText} /></p>{showNowPlayingTranslation && <small>{nowPlayingTranslation}</small>}<SentenceAnalysis insight={nowPlayingAnalysis} expanded={expandedAnalysisKey === nowPlayingAnalysisKey} onToggle={() => { setShowNowPlayingTranslation(true); setExpandedAnalysisKey((key) => key === nowPlayingAnalysisKey ? null : nowPlayingAnalysisKey); }} compact /></div>
 						<div className="mobile-now-actions"><button onClick={() => void togglePlayback()} aria-label={isPlaying ? "暂停" : "播放"}>{isPlaying ? "Ⅱ" : "▶"}</button><button type="button" className={showNowPlayingTranslation ? "active" : ""} onClick={() => setShowNowPlayingTranslation((shown) => !shown)} aria-pressed={showNowPlayingTranslation}>{showNowPlayingTranslation ? "译文" : "翻译"}</button>{nowPlayingAnalysis && <button type="button" className={expandedAnalysisKey === nowPlayingAnalysisKey ? "active" : ""} onClick={() => { setShowNowPlayingTranslation(true); setExpandedAnalysisKey((key) => key === nowPlayingAnalysisKey ? null : nowPlayingAnalysisKey); }} aria-pressed={expandedAnalysisKey === nowPlayingAnalysisKey}>解析</button>}<button type="button" onClick={openTranscript}>全文</button></div>
 					</div>
 
@@ -863,7 +894,7 @@ function App() {
 				</section>
 				</div>
 
-				{current.hasBookText && <section className="source-card" aria-label="源书对话与翻译">
+				{current.hasBookText && <section ref={sourceCardRef} className="source-card" style={desktopTranscriptHeight === null ? undefined : { height: desktopTranscriptHeight }} aria-label="源书对话与翻译">
 					<div className="source-heading">
 						<div><p className="eyebrow">{course.trackAudio ? "整段文本" : "逐句文本"}</p><h2>{current.label}</h2><p>日语、中文与英文均为可选择、可复制的文本；日语句中的汉字均会显示读音。</p></div>
 						<div className="translation-tabs" role="group" aria-label="翻译语言">
