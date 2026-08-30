@@ -26,11 +26,37 @@ KANJI = re.compile(r"[㐀-鿿豈-﫿々〆]")
 RUBY_TOKEN = re.compile(r"\{\{.+?\|.+?\}\}")
 KAKASI = pykakasi.kakasi()
 
+# pykakasi intentionally works without a full morphological analyzer, so a
+# few context-sensitive textbook words need deterministic readings.  Keep the
+# verified surface text in jp/*.txt authoritative and apply these only while
+# producing the display-only ruby layer.
+RUBY_OVERRIDES = {
+    "国際オリンピック委員会": "{{国際|こくさい}}オリンピック{{委員会|いいんかい}}",
+    "日本オリンピック委員会": "{{日本|にほん}}オリンピック{{委員会|いいんかい}}",
+    "日本語学習": "{{日本語|にほんご}}{{学習|がくしゅう}}",
+    "日本語学校": "{{日本語|にほんご}}{{学校|がっこう}}",
+    "確認済み": "{{確認済|かくにんず}}み",
+    "ダイエット中": "ダイエット{{中|ちゅう}}",
+    "炭水化物": "{{炭水化物|たんすいかぶつ}}",
+    "三連休の中日": "{{三連休|さんれんきゅう}}の{{中日|なかび}}",
+    "男の人": "{{男|おとこ}}の{{人|ひと}}",
+    "危ない人": "{{危|あぶ}}ない{{人|ひと}}",
+    "女の子": "{{女|おんな}}の{{子|こ}}",
+    "日本人": "{{日本人|にほんじん}}",
+    "日本語": "{{日本語|にほんご}}",
+    "日本": "{{日本|にほん}}",
+    "ご飯": "ご{{飯|はん}}",
+    "小さい": "{{小|ちい}}さい",
+    "小さく": "{{小|ちい}}さく",
+    "一人": "{{一人|ひとり}}",
+    "二人": "{{二人|ふたり}}",
+    "30分": "{{30分|さんじゅっぷん}}",
+}
+OVERRIDE_TERMS = sorted(RUBY_OVERRIDES, key=len, reverse=True)
 
-def ruby(text: str) -> str:
-    """Return the app's {{surface|reading}} representation for every kanji term."""
-    if not text or not KANJI.search(text):
-        return text
+
+def ruby_with_kakasi(text: str) -> str:
+    """Annotate one text fragment that contains no explicit overrides."""
     result: list[str] = []
     for item in KAKASI.convert(text):
         original = item["orig"]
@@ -54,6 +80,30 @@ def ruby(text: str) -> str:
             continue
         result.append(f"{prefix}{{{{{base}|{kana}}}}}{suffix}")
     return "".join(result)
+
+
+def ruby(text: str) -> str:
+    """Return the app's {{surface|reading}} representation for every kanji term."""
+    if not text or not KANJI.search(text):
+        return text
+    result: list[str] = []
+    plain_start = 0
+    cursor = 0
+    while cursor < len(text):
+        term = next((candidate for candidate in OVERRIDE_TERMS if text.startswith(candidate, cursor)), None)
+        if term is None:
+            cursor += 1
+            continue
+        result.append(ruby_with_kakasi(text[plain_start:cursor]))
+        result.append(RUBY_OVERRIDES[term])
+        cursor += len(term)
+        plain_start = cursor
+    result.append(ruby_with_kakasi(text[plain_start:]))
+    annotated = "".join(result)
+    # A bare 時 after an Arabic numeral means the hour counter, not とき.
+    annotated = re.sub(r"(?<=\d)\{\{時\|とき\}\}", "{{時|じ}}", annotated)
+    # A standalone person noun is ひと; numeric counters such as 4人 keep にん.
+    return re.sub(r"(?<!\d)\{\{人\|にん\}\}", "{{人|ひと}}", annotated)
 
 
 def ruby_document(text: str) -> str:
