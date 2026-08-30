@@ -148,6 +148,14 @@ function matchesAudioSource(audio: HTMLAudioElement, source: string) {
 	}
 }
 
+function audioSourcesForSection(course: Course, sectionIndex: number) {
+	const lesson = course.lessons[sectionIndex];
+	if (!lesson) return [];
+	if (course.trackAudio) return [lesson.audio];
+	const section = String(lesson.index).padStart(2, "0");
+	return Array.from({ length: lesson.sentenceCount }, (_, position) => `/audio/${section}-${position + 1}.mp3`);
+}
+
 function isOcrNoise(line: string) {
 	return !line ||
 		/^[ぁ-ゖァ-ヺー・]+$/.test(line) ||
@@ -342,6 +350,7 @@ function App() {
 	const audioRef = useRef<HTMLAudioElement>(null);
 	const sourceCardRef = useRef<HTMLElement>(null);
 	const loadedAudioSourceRef = useRef<string | null>(null);
+	const preloadedAudioRef = useRef(new Set<string>());
 	const favoriteActionPointerRef = useRef(false);
 	const [initialProgress] = useState(readSavedProgress);
 	const resumeRef = useRef<SavedProgress | null>(initialProgress.currentTime > 0 ? initialProgress : null);
@@ -399,6 +408,33 @@ function App() {
 		if (!audio) return;
 		audio.playbackRate = speed;
 	}, [speed]);
+
+	useEffect(() => {
+		const sectionIndexes = [currentIndex - 1, currentIndex, currentIndex + 1]
+			.filter((index) => index >= 0 && index < course.lessons.length);
+		const sources = sectionIndexes.flatMap((index) => audioSourcesForSection(course, index));
+		const runPreload = () => {
+			for (const source of sources) {
+				if (preloadedAudioRef.current.has(source)) continue;
+				preloadedAudioRef.current.add(source);
+				const link = document.createElement("link");
+				link.rel = "prefetch";
+				link.as = "audio";
+				link.href = source;
+				document.head.append(link);
+			}
+		};
+		const idleWindow = window as Window & {
+			requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+			cancelIdleCallback?: (handle: number) => void;
+		};
+		if (idleWindow.requestIdleCallback) {
+			const idleHandle = idleWindow.requestIdleCallback(runPreload, { timeout: 2_000 });
+			return () => idleWindow.cancelIdleCallback?.(idleHandle);
+		}
+		const timeout = window.setTimeout(runPreload, 300);
+		return () => window.clearTimeout(timeout);
+	}, [course, currentIndex]);
 
 	useEffect(() => {
 		const audio = audioRef.current;
