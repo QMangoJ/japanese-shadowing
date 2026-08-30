@@ -1,10 +1,6 @@
-export type VocabularyInsight = {
-	term: string;
-	reading?: string;
-	meaning: string;
-	detail: string;
-	aliases?: string[];
-};
+import { reviewedVocabulary, type VocabularyInsight } from "./reviewedVocabulary";
+
+export type { VocabularyInsight } from "./reviewedVocabulary";
 
 export type GrammarInsight = {
 	point: string;
@@ -20,7 +16,7 @@ export type SentenceInsight = {
 // word splitter. It prefers useful words and expressions over particles,
 // counters, and speaker names. Add aliases when a word appears conjugated in
 // the book text.
-const glossary: VocabularyInsight[] = [
+const legacyGlossary: VocabularyInsight[] = [
 	{ term: "はじめまして", meaning: "初次见面", detail: "第一次与对方见面时使用的固定寒暄语。" },
 	{ term: "どうぞよろしく", meaning: "请多关照", detail: "自我介绍后常用的礼貌表达；完整说法是「どうぞよろしくお願いします」。" },
 	{ term: "今", reading: "いま", meaning: "现在", detail: "说话时所处的时间点。" },
@@ -188,6 +184,20 @@ const glossary: VocabularyInsight[] = [
 	{ term: "頑張る", reading: "がんばる", meaning: "努力／加油", detail: "为目标坚持努力。", aliases: ["頑張っ", "頑張り"] },
 ];
 
+// The later beginner units assume the N5 foundation. Keep those very common
+// words available for Sections 3-10, but do not crowd out the more useful N4+
+// and spoken expressions in Unit 2 onward.
+const n5FoundationTerms = new Set([
+	"今", "何", "何時", "時", "時半", "昨日", "今日", "明日", "一昨日", "曜日", "誕生日",
+	"銀行", "午前", "午後", "今年", "年", "月", "日", "ヶ月", "どのくらい", "寝る", "テスト",
+	"水曜日", "日本", "日本語", "英語", "学校", "部屋", "名前", "一つ", "駅", "歩く", "映画",
+	"赤い", "大きい", "きれい", "人", "天気", "本当に", "漢字", "勉強", "自転車", "病院",
+	"新しい", "仕事", "朝", "行く", "来る", "帰る", "会う", "見る", "食べる", "飲む", "買う",
+	"使う", "思う", "知る", "書く", "聞く", "待つ", "持つ",
+]);
+
+const glossary = [...reviewedVocabulary, ...legacyGlossary];
+
 type GrammarRule = { point: string; explanation: string; matches: (text: string) => boolean };
 
 const grammarRules: GrammarRule[] = [
@@ -212,7 +222,7 @@ const grammarRules: GrammarRule[] = [
 	{ point: "〜けど", explanation: "连接前后内容，表示转折、铺垫或语气缓和：不过／但是……。", matches: (text) => /けど/.test(text) },
 	{ point: "〜んです", explanation: "用于补充说明理由、背景或强调解释；口语中很常见。", matches: (text) => /んです|のです/.test(text) },
 	{ point: "〜てください", explanation: "礼貌地请求对方做某事：请……。", matches: (text) => /てください/.test(text) },
-	{ point: "〜たい", explanation: "接在动词词干后表示愿望：想要……。", matches: (text) => /(?:たい|たく)/.test(text) },
+	{ point: "〜たい", explanation: "接在动词词干后表示愿望：想要……。", matches: (text) => /(?:^|[^っ])(?:たい(?=です|と思|ん|な|よ|ね|けど|から|ので|[。！？、]|$)|たく(?=ない|て|なっ|ありません))/.test(text) },
 	{ point: "〜ている", explanation: "可表示正在进行、习惯动作或状态持续；结合语境理解。", matches: (text) => /ている|ていま|てる/.test(text) },
 	{ point: "〜ですか", explanation: "礼貌疑问句；句末「か」把陈述变成问题。", matches: (text) => /ですか[？?]?/.test(text) },
 	{ point: "时间＋に", explanation: "「に」标记动作发生的具体时间，如「9時に」。", matches: (text) => /(?:時|日|曜日|月|年)に/.test(text) },
@@ -238,13 +248,14 @@ export function getSentenceInsight(section: number, text: string): SentenceInsig
 	const candidates = glossary
 		.map((entry) => ({ entry, match: firstMatch(plain, [entry.term, ...(entry.aliases ?? [])]) }))
 		.filter((candidate): candidate is { entry: VocabularyInsight; match: { position: number; length: number } } => candidate.match !== null)
+		.filter(({ entry }) => section < 11 || !n5FoundationTerms.has(entry.term))
 		.sort((a, b) => a.match.position - b.match.position || b.match.length - a.match.length);
 	const occupied: Array<{ start: number; end: number }> = [];
 	const vocabulary = candidates.filter(({ match }) => {
 		const overlaps = occupied.some((range) => match.position < range.end && match.position + match.length > range.start);
 		if (!overlaps) occupied.push({ start: match.position, end: match.position + match.length });
 		return !overlaps;
-	}).slice(0, 6).map(({ entry }) => entry);
+	}).slice(0, 10).map(({ entry }) => entry);
 	const grammar = grammarRules.filter((rule) => rule.matches(plain)).slice(0, 3).map(({ point, explanation }) => ({ point, explanation }));
 	return { vocabulary, grammar };
 }
