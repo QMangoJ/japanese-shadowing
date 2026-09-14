@@ -121,6 +121,7 @@ function readFavorites(): Favorite[] {
 }
 
 const speeds = [0.75, 1, 1.25, 1.5];
+const sleepTimerOptions = [10, 30, 60] as const;
 
 const dialogueLineCounts: Record<number, number[]> = {
 	4: [2, 2, 2, 2, 2, 2, 4, 2, 2, 2],
@@ -363,6 +364,10 @@ function App() {
 	const [duration, setDuration] = useState(0);
 	const [speed, setSpeed] = useState(1);
 	const [loop, setLoop] = useState(false);
+	const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
+	const [sleepDurationMinutes, setSleepDurationMinutes] = useState<number | null>(null);
+	const [sleepRemainingSeconds, setSleepRemainingSeconds] = useState(0);
+	const sleepEndsAtRef = useRef<number | null>(null);
 	const [translation, setTranslation] = useState<"zh" | "en">("zh");
 	const [showNowPlayingTranslation, setShowNowPlayingTranslation] = useState(false);
 	const [expandedAnalysisKey, setExpandedAnalysisKey] = useState<string | null>(null);
@@ -409,6 +414,33 @@ function App() {
 		if (!audio) return;
 		audio.playbackRate = speed;
 	}, [speed]);
+
+	useEffect(() => {
+		sleepEndsAtRef.current = sleepEndsAt;
+	}, [sleepEndsAt]);
+
+	useEffect(() => {
+		if (!sleepEndsAt) return;
+		const expireSleepTimer = () => {
+			playAfterChangeRef.current = false;
+			audioRef.current?.pause();
+			setIsPlaying(false);
+			setSleepEndsAt(null);
+			setSleepDurationMinutes(null);
+			setSleepRemainingSeconds(0);
+		};
+		const updateSleepTimer = () => {
+			const remainingMilliseconds = sleepEndsAt - Date.now();
+			if (remainingMilliseconds <= 0) {
+				expireSleepTimer();
+				return;
+			}
+			setSleepRemainingSeconds(Math.ceil(remainingMilliseconds / 1_000));
+		};
+		updateSleepTimer();
+		const interval = window.setInterval(updateSleepTimer, 250);
+		return () => window.clearInterval(interval);
+	}, [sleepEndsAt]);
 
 	useEffect(() => {
 		const sectionIndexes = [currentIndex - 1, currentIndex, currentIndex + 1]
@@ -617,6 +649,22 @@ function App() {
 		setPlayRequest((request) => request + 1);
 	}
 
+	function setSleepTimer(minutes: number) {
+		if (sleepDurationMinutes === minutes) {
+			cancelSleepTimer();
+			return;
+		}
+		setSleepEndsAt(Date.now() + minutes * 60 * 1_000);
+		setSleepDurationMinutes(minutes);
+		setSleepRemainingSeconds(minutes * 60);
+	}
+
+	function cancelSleepTimer() {
+		setSleepEndsAt(null);
+		setSleepDurationMinutes(null);
+		setSleepRemainingSeconds(0);
+	}
+
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape" && showTranscript) {
@@ -781,6 +829,11 @@ function App() {
 	}
 
 	function handleEnded() {
+		if (sleepEndsAtRef.current && Date.now() >= sleepEndsAtRef.current) {
+			playAfterChangeRef.current = false;
+			setIsPlaying(false);
+			return;
+		}
 		if (loop) return;
 		if (currentSentence < current.sentenceCount) {
 			setCurrentSentence((sentence) => sentence + 1);
@@ -900,6 +953,11 @@ function App() {
 								{speeds.map((value) => <button key={value} className={speed === value ? "selected" : ""} onClick={() => setSpeed(value)}>{value}×</button>)}
 							</div>
 							<button className={`loop-button ${loop ? "active" : ""}`} onClick={() => setLoop((value) => !value)} aria-pressed={loop}>↻ 当前句循环</button>
+						</div>
+						<div className="sleep-timer" role="group" aria-label="定时暂停">
+							<span className="sleep-timer-label">定时暂停</span>
+							{sleepTimerOptions.map((minutes) => <button key={minutes} type="button" className={sleepDurationMinutes === minutes ? "selected" : ""} onClick={() => setSleepTimer(minutes)} aria-pressed={sleepDurationMinutes === minutes}>{minutes === 60 ? "1 小时" : `${minutes} 分钟`}</button>)}
+							{sleepEndsAt && <><span className="sleep-countdown">{formatTime(sleepRemainingSeconds)} 后暂停</span><button className="sleep-cancel" type="button" onClick={cancelSleepTimer}>取消</button></>}
 						</div>
 					</article>
 
