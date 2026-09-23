@@ -66,9 +66,17 @@ const intermediateUnits: Unit[] = [
 ];
 
 function intermediateSection(index: number) {
-	const ranges = [7, 15, 25, 37, 46, 54, 63];
 	if (index >= 65) return "上级";
-	return ranges.some((end) => index <= end) ? "Section 1 · 中级" : "Section 2 · 上级";
+	// Each Unit 1–7 has a Section 1 / Section 2 split; these are Section 1 end indexes.
+	const section1Ends = [7, 15, 25, 37, 46, 54, 63];
+	const unitEnds = [8, 17, 26, 38, 47, 56, 64];
+	const unitIndex = unitEnds.findIndex((end) => index <= end);
+	if (unitIndex < 0) return "上级";
+	return index <= section1Ends[unitIndex] ? "Section 1 · 中级" : "Section 2 · 上级";
+}
+
+function sleepDeadlineMs(minutes: number) {
+	return Date.now() + minutes * 60 * 1_000;
 }
 
 const intermediateLessons: PracticeItem[] = Array.from({ length: 74 }, (_, position) => {
@@ -654,7 +662,7 @@ function App() {
 			cancelSleepTimer();
 			return;
 		}
-		setSleepEndsAt(Date.now() + minutes * 60 * 1_000);
+		setSleepEndsAt(sleepDeadlineMs(minutes));
 		setSleepDurationMinutes(minutes);
 		setSleepRemainingSeconds(minutes * 60);
 	}
@@ -673,12 +681,19 @@ function App() {
 			}
 			if (event.code === "Space" && !(event.target instanceof HTMLInputElement)) {
 				event.preventDefault();
-				void togglePlayback();
+				const audio = audioRef.current;
+				if (!audio) return;
+				if (audio.paused) {
+					void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+				} else {
+					audio.pause();
+					setIsPlaying(false);
+				}
 			}
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	});
+	}, [showTranscript]);
 
 	function clearTextSelection() {
 		window.getSelection()?.removeAllRanges();
