@@ -1,50 +1,24 @@
-2
-A: Can you repair thes
-B: Yes, it can be done
-to fix them by tom
-A: Ifpossible, P'd liket
-done today.
-B：lunderstand. Then.
-them repaired by 5|
-A: Excuse me, do ye
-rice？
-B：Sure, we deliver ifi
-more.
-A： Well， Id like sone
-B: Then please write （
-address here.
-（Ata Home Appliance：
-A: Excuse me, I'd like
-kotatsu in the U.S..
-B: Sure. This is compati
-to 120V, so if you l
-verter plug, you can
-A: A converter plug？
-B: Yes. The shape of：
-different.
-A: Excuse me, can lus
-delivery service？
-B: Sure, please write
-necessary items insi
-frame.
-A: Well, when would
-ered？
-B: If it is to Fukuoka
-it will get there al
-the next day.
-A: Welcome.
-B: Excuse me, but wou
-clean these？
-A: Sure. Let's see, thre
-one pair of pants，
-you have a membe
-B: Oh, isn't it a blue
-it is. Here.
-（At the Bank）
-A: Is anyone helping
-B: Oh? Well, I'd like
-account.
-A：Anew account, nig
-Case, please take ti
-and wait for it to b
-B：Oh, yes, Isee.
+A：Can these shoes be fixed?
+B：Yes, no problem. Is tomorrow OK?
+A：If possible, I'd like them today.
+B：Understood. Then I'll have them done by about 5 p.m.
+A：Excuse me, do you deliver rice here?
+B：Yes, we deliver from 5 kilograms.
+A：Then, please.
+B：Then please write your address here.
+A：Um, I want to use this kotatsu in America.
+B：Yes. This one supports up to 120V, so you can use it in America if you have a plug adapter.
+A：A plug adapter?
+B：Yes. Because the plug shape is different.
+A：Excuse me, I'd like to send a package.
+B：Sure, then please fill in the required items in this bold box.
+A：Um, when will it arrive?
+B：For Fukuoka, it usually arrives after 6 o'clock tomorrow.
+A：Welcome.
+B：Excuse me, I'd like this dry-cleaned.
+A：Sure. Let's see, three dress shirts and one pair of pants. Do you have a member's card?
+B：Um, it's the blue one, right? Oh, here it is.
+A：Is someone helping you?
+B：Huh? Oh, um, I'd like to open an account.
+A：A new customer. Then please take a number ticket and wait.
+B：Oh, OK.

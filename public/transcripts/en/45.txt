@@ -1,52 +1,24 @@
-1
-2
-5
-A: Oh, it's gone！ （lit. I
-peared.）
-B: What's the matter？
-A: I've been trying to u
-stagram, but it's gor
-B: Oh, it happened ton
-other day mine di
-twice in a row, Iw
-（lit. my heart was bi
-A: Hello? Hello？
-B: Oh no, the battery te
-phone is about to di
-I going to do？
-A: Don't you have son
-a mobile battery？
-B: Yeah, sure, I have it
-on a second.
-A: Hello. This is Yamada
-a call but...
-B: Oh, Mr. Yamada, so
-dentally called you a
-ago.
-A:Oh,Isee.
-B: l an sorry. Thank y
-ing the time to retur
-（Ata Sightseeing Spot）
-A: Hey, look at this si
-are prohibited here.
-B: You're right. I can se
-is nice, so there will b
-ple who want to take
-A: It's a shrine here, an
-the mountain, so it's
-B: That's right. It is dar
-A: Shabushabu yesterda
-yen for all you can ea
-B: It's quite cheap. What
-of the restaurant？
-A: What was it? Ifyou s
-Nakano station, shal
-will come up.
-B：Oh, maybe this is it.
-rating is 4.3 points.
-lar restaurant.
-A: Is anyone using this
-B：Oh, please turn it of
-A: But what shall I do
-Word doc.？
-B: Save it, please.
+A：Ah! It disappeared!
+B：What's wrong?
+A：I was trying to post on Instagram, but it disappeared.
+B：Ah, that happens. The other day mine disappeared twice in a row, and I gave up.
+A：Hello? Hello?
+B：Ah, my smartphone battery is about to die. What should I do?
+A：Don't you have a portable charger or something?
+B：Ah, I do, I do! Hold on a sec.
+A：Hello. This is Yamada. I got a call from you.
+B：Oh, Yamada, sorry. I called you by mistake earlier.
+A：Oh, I see.
+B：Sorry. Thanks for taking the trouble to call back.
+A：Oh, look at this sign. Drones are prohibited here.
+B：You're right. The view is great, so I'm sure some people want to film.
+A：This is a shrine, and it's on a mountain, so it's windy.
+B：Right. Because it's dangerous.
+A：Yesterday's shabu-shabu was all-you-can-eat-and-drink for 2,980 yen.
+B：That's pretty cheap. What's the restaurant called?
+A：What was the name... If you search "Nakano Station shabu-shabu," it'll come up.
+B：Oh, is this it? Wow! 4.3 points. It's a popular place.
+A：Is anyone using this computer?
+B：Oh, shut it down.
+A：Huh, what should I do with this Word file?
+B：Oh, save it.

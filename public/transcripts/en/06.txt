@@ -1,35 +1,20 @@
-2
-3
-5
-6
-A: Pleased to meet yol
-B: Pleased to meet
-（Meaning: I look f
-x-ing. lit. Please t
-me.）
-A: Here, enjoy.
-B：Oh, thank you very I
-Appetit.
-A: What country are y
-B: I am from Korea.
-A: Is it your first time
-B: No, this is my 3rdt
-A: Are you OK with
-food？
-B: Yes, T'm fine with i
-A: I had better get goi
-B: Is that right? Well，
-A: Wow, that looks tast
-that？
-B: This? It is a Chine
-Would you like tot
-A: What kind of gam
-like？
-B: My favorite is RPG，
-（In the Elevator）
-A : What floor for you？
-B：Oh, the 8th floor pl
-A: Where're you goin！
-holiday？
-B: I'm going to the oce
-friend.
+A：Nice to meet you.
+B：Nice to meet you. I look forward to working with you.
+A：Here, this is for you.
+B：Oh, thank you so much. I'll gladly take it.
+A：Which country are you from?
+B：Korea.
+A：Is this your first time in Japan?
+B：No, it's my third time.
+A：Are you OK with Japanese food?
+B：Yes, it's fine.
+A：I should be going soon.
+B：Oh, I see. Well, see you again.
+A：Wow, that looks delicious. What is it?
+B：This? It's a Chinese snack. Would you like one?
+A：What kind of games do you like?
+B：I guess RPGs are my favorite.
+A：Which floor?
+B：Oh, eighth floor, please.
+A：Where are you going on your next day off?
+B：I'm going to the beach with friends.

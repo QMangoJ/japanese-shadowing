@@ -1,50 +1,18 @@
-1
-2
-（At a Home Appliance
-A: Excuse me, could
-how to use this washi
-B：Sure. This one, righ
-latest model from tl
-turer. It is a drum-sty
-dry your clothes qu
-A: It says 7kg, but ho
-ple is that for？
-B: 7 kg would be for ：
-people.
-A: Well, I could use a
-I live on my oWn.
-B: In that case, how ab
-5kg, I think it sho
-cient for one person
-A: Let me see. But it：
-pensive. Would yo
-me the one that is
-style？
-B: Let's see. This one h
-drying function, but
-ordinary use. It's ea
-as well.
-（At a Clinic <Dermato.
-A：Yes, hello. What ist
-B: Well, there are red
-inner arm.
-A: Let me take a look.
-ly is red, isn't it. Do
-B:Yes. It is very itchy
-up scratching it. Sot
-spread even more. /
-like it is getting swe
-A: I see. Does it hurt？
-B: I don't feel any pair
-A: This is likely to be
-bite. Did you do sol
-touch a leaf of a tre
-B: Well, Iwalked wher
-a lot of trees in the
-day.
-A: You might have a
-touched one. In any
-give you some ointm
-see how it goes. This：
-worth.
-B: OK. Thank you ver
+A：Excuse me, I'd like to hear about this washing machine.
+B：Sure. This one? This is the manufacturer's latest model. It's drum-type and can also dry in a short time.
+A：It says 7 kilograms. How many people is it for?
+B：Seven kilograms is for about two or three people.
+A：Ah, a smaller one is fine. I live alone.
+B：In that case, how about this one? It's 5 kilograms, so it should be plenty for one person.
+A：I see. But it's a bit expensive. Could you show me ones that aren't drum-type?
+B：Sure. This one... doesn't have a dryer function, but it's fine for normal use. It's easy to operate too.
+A：Hello. What seems to be the problem?
+B：Um, I got red bumps on the inside of my arm.
+A：Let me take a look. Ah, it certainly is red. Is it itchy?
+B：Yes. It's really itchy, and I couldn't help scratching. Then the itchy area spread even more. And I feel like it's gradually swelling up.
+A：I see. Any pain?
+B：No, it doesn't hurt.
+A：You were probably stung by a caterpillar. Did you touch any tree leaves?
+B：Oh, yesterday I walked through an area with lots of trees in the park.
+A：You may have touched one then. For now I'll give you an ointment, so let's see how it goes. A week's worth.
+B：I understand. Thank you very much.

@@ -1,53 +1,24 @@
-1
-2
-A: I will be in Hokkaid
-next week.
-B: Really? Hokkaido
-Nice. Are you trave
-A: Just a business trip.
-to eat something tas
-B : Remember to get me
-please. I will be look
-to it.
-A: Wow, you got a tan
-been away？
-B: Yeah, to Hawai.
-A: Oh, really？
-B: While that is what
-do, I actually I got
-swimming pool.
-5
-A: Is there a pharmacy ：
-I wonder？
-B:Letmesee...it's neal
-Ibelieve it was at the
-A: Yes, that is right. Iw
-still open at this hot
-B: Sure, it should be. TI
-24 hours.
-A: What is the most surr
-you found in Japan.
-B: A surprising thing.I
-people are quiet w
-meals.
-A: Really? Are we quiet
-for granted so I nev
-B: Yeah, Iwas surprise
-very quiet on the tra
-A: After sale service
-brand-name goods，
-B:Iagree！
-A：The other day, when
-my bag got broken，
-it right away, youk
-B: What? The bag stral
-Even though it is al
-product？
-（Paying for Utility Bil
-Convenience Store）
-A: Can I pay with this？
-B: Iam sorry, this is a pa
-specifically for the _
-A: Oh, Isee. Then wol
-work？
-B: Yes. It does. That's
+A：I'll be in Hokkaido for a while next week.
+B：Oh, Hokkaido in summer. Nice. A trip?
+A：Just a business trip. But I want to eat something good.
+B：Bring me a souvenir. I'm counting on it.
+A：Wow, you got a tan. Did you go somewhere?
+B：Yeah, just to Hawaii...
+A：What, really?
+B：Wishing I could go, I got a tan at the pool.
+A：Was there a pharmacy around here?
+B：Let's see, by the station. There was one at the south exit.
+A：Oh, that's right. I wonder if it's still open at this hour.
+B：Yes, it should be open. It's open 24 hours.
+A：What surprised you most when you came to Japan?
+B：What surprised me... Maybe how quiet it is at mealtimes.
+A：Really? Is it quiet? That's normal to me, so I never noticed.
+B：Yeah. I was surprised how quiet it is on trains too.
+A：Brand-name goods really have good after-sales service.
+B：Exactly!
+A：The other day when the handle of my bag broke, they fixed it right away.
+B：What, the handle came off? Even though it's a brand-name bag?
+A：Can I pay this here?
+B：This is a payment slip for use only at the post office...
+A：Oh, I see. Then is this one OK?
+B：Yes, that's fine. That's 2,680 yen.
