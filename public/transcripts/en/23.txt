@@ -1,44 +1,20 @@
-2
-5
-A: Hey, give me a bit
-cookie.
-B: Fine. T'll give yout
-cookie, not just a b
-you go.
-A: Oh no, it started rall
-B: Do you have an u
-Please use this if yo
-A: Here is your tea. B
-it's hot.
-B: Oh, thank you very
-A: Hello, is this Mr. Yan
-is Sato. Can youtal
-B: Um, I am on the t
-now. Let me call：
-when I arrive at the
-A: Did you hear? Marie
-married.
-B: Yeah, it sounds like s
-ing a baby.
-A: Were you nervous be
-ing to Japan？
-B: Yes, it is my first tis
-abroad, so...
-A: Hey, you should w
-neatly. What did y
-here？
-B: Let's see...what w
-can't read it myself
-A: Will you go back t
-for summer break？
-B: Iwould like to go bac
-cause it's the peak s
-airplane ticket is exp
-A: Hey, if you are going
-make sure to let me
-B: Sorry! The meeting
-and didn't finish ea
-A: How about going
-meal sometime？
-B: Oh, that sounds ni
-means.
+A：Hey, give me a bite of that cookie.
+B：Sure. Not just a bite, have a whole one. Here you go.
+A：Oh, it's started to rain.
+B：Do you have an umbrella? If you like, please use this one.
+A：Here's some tea. It's hot, so please be careful.
+B：Oh, thank you. I'll have some.
+A：Hello, is this Mr./Ms. Yamada? It's Sato. Is now a good time to talk?
+B：Oh, I'm on the train right now. I'll call you back when I get to the station.
+A：Hey, did you hear? Marie is getting married.
+B：Yeah, and apparently she's expecting.
+A：Were you nervous when you came to Japan?
+B：Yes, because it was my first time living alone abroad.
+A：Hey, you should write more neatly. What did you write here?
+B：Ah, what was it... Even I can't read it.
+A：Are you going back to Sweden for summer vacation?
+B：I'd like to... but it's high season, so plane tickets are expensive...
+A：Come on! If you're going to be late, let me know.
+B：Sorry! The meeting just wouldn't end.
+A：How about dinner sometime?
+B：Oh, that sounds nice. I'd love to.

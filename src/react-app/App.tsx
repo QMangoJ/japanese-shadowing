@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createHybridStore } from "./hybridStorage";
 import { getSentenceInsight, type SentenceInsight } from "./sentenceAnalysis";
+import { beginnerSentenceCounts, groupBeginnerDialogue, groupNarratives, normalizeOcrBlock } from "./transcriptParsing";
 import "./App.css";
 
 type PracticeItem = {
@@ -37,15 +38,6 @@ const beginnerUnits: Unit[] = [
 	{ number: 6, start: 53, end: 56 },
 ];
 
-const sentenceCounts = [
-	...Array(9).fill(10), 6,
-	...Array(8).fill(10), 6, 6,
-	...Array(7).fill(10), 6, 5, 5,
-	...Array(8).fill(10), 6, 6,
-	...Array(12).fill(6),
-	...Array(4).fill(2),
-];
-
 const beginnerLessons: PracticeItem[] = Array.from({ length: 56 }, (_, position) => {
 	const index = position + 1;
 	const padded = String(index).padStart(2, "0");
@@ -54,7 +46,7 @@ const beginnerLessons: PracticeItem[] = Array.from({ length: 56 }, (_, position)
 		label: `Section ${padded}`,
 		audio: `/audio/${padded}-1.mp3`,
 		hasBookText: true,
-		sentenceCount: sentenceCounts[position],
+		sentenceCount: beginnerSentenceCounts[position],
 	};
 });
 
@@ -131,18 +123,6 @@ function readFavorites(): Favorite[] {
 const speeds = [0.75, 1, 1.25, 1.5];
 const sleepTimerOptions = [10, 30, 60] as const;
 
-const dialogueLineCounts: Record<number, number[]> = {
-	4: [2, 2, 2, 2, 2, 2, 4, 2, 2, 2],
-	10: [4, 4, 4, 4, 4, 4],
-	19: [4, 4, 4, 4, 4, 4],
-	25: [2, 2, 2, 2, 2, 2, 2, 3, 2, 2],
-	40: [4, 4, 4, 4, 4, 4],
-	43: [4, 4, 4, 4, 4, 4],
-	45: [4, 4, 4, 4, 4, 4],
-	47: [4, 4, 4, 4, 4, 4],
-	54: [8, 10],
-};
-
 function formatTime(seconds: number) {
 	if (!Number.isFinite(seconds)) return "0:00";
 	const minutes = Math.floor(seconds / 60);
@@ -166,126 +146,6 @@ function audioSourcesForSection(course: Course, sectionIndex: number) {
 	return Array.from({ length: lesson.sentenceCount }, (_, position) => `/audio/${section}-${position + 1}.mp3`);
 }
 
-function isOcrNoise(line: string) {
-	return !line ||
-		/^[ぁ-ゖァ-ヺー・]+$/.test(line) ||
-		/^(?:Unit|section|[0-9①-⑳]+|[A-Za-z])$/.test(line);
-}
-
-function appendOcrContinuation(lines: string[], continuation: string) {
-	const previous = lines[lines.length - 1];
-	const text = continuation.trim();
-	if (!previous || !text) return;
-	if (/^[（(].*[）)]$/.test(previous)) {
-		lines.push(text);
-		return;
-	}
-	if (previous.endsWith("-")) {
-		lines[lines.length - 1] = `${previous.slice(0, -1)}${text}`;
-		return;
-	}
-	const needsSpace = /[A-Za-z0-9]$/.test(previous) && /^[A-Za-z0-9]/.test(text);
-	lines[lines.length - 1] = `${previous}${needsSpace ? " " : ""}${text}`;
-}
-
-function normalizeOcrBlock(raw: string) {
-	const normalized: string[] = [];
-	for (const untrimmed of raw.split("\n")) {
-		const line = untrimmed.trim();
-		if (/^[AB]$/i.test(line)) {
-			normalized.push(line.toUpperCase());
-			continue;
-		}
-		if (isOcrNoise(line)) continue;
-		// In the scanned intermediate book, a colon is sometimes recognized as
-		// i / I / | (for example, "Bi わかってる"). Treat those as speaker marks.
-		const speaker = line.match(/^.*([AB])\s*(?::|：|[iI|])\s*(.*)$/i);
-		if (speaker) {
-			const name = speaker[1].toUpperCase();
-			const text = speaker[2].trim();
-			normalized.push(text ? `${name}: ${text.replace(/太野/g, "大野")}` : name);
-			continue;
-		}
-		// Book headings are semantic paragraph boundaries; all other breaks are
-		// scan-layout wraps and should not appear as a new line on the site.
-		if (/^[（(].*[）)]$/.test(line)) {
-			normalized.push(line);
-			continue;
-		}
-		appendOcrContinuation(normalized, line);
-	}
-	return normalized.join("\n");
-}
-
-function extractSpokenLines(raw: string) {
-	const spoken: string[] = [];
-	let pendingSpeaker: string | null = null;
-	for (const untrimmed of raw.split("\n")) {
-		const line = untrimmed.trim();
-		if (isOcrNoise(line)) continue;
-		// OCR frequently prefixes a speaker marker with a page ornament (CB, QB,
-		// 2B, etc.). The final A/B immediately before the colon is authoritative.
-		const match = line.match(/^.*([AB])\s*(?::|：|[iI|])\s*(.*)$/i);
-		if (match) {
-			const text = match[2].trim();
-			if (text) {
-				pendingSpeaker = null;
-				spoken.push(`${match[1].toUpperCase()}: ${text.replace(/太野/g, "大野")}`);
-			}
-			else pendingSpeaker = match[1].toUpperCase();
-			continue;
-		}
-		if (/^[AB]$/i.test(line)) {
-			pendingSpeaker = line.toUpperCase();
-			continue;
-		}
-		if (pendingSpeaker && line) {
-			spoken.push(`${pendingSpeaker}: ${line.replace(/太野/g, "大野")}`);
-			pendingSpeaker = null;
-			continue;
-		}
-		const missingA = line.match(/^[:：]\s*(.+)$/);
-		const malformedB = line.match(/^(?:[2２]日|日)\s*[:：]\s*(.+)$/);
-		if ((malformedB && spoken.length > 0) || (missingA && (spoken.length > 0 || /[ぁ-んァ-ン一-龯]/.test(missingA[1])))) {
-			spoken.push(`${missingA ? "A" : "B"}: ${(missingA?.[1] ?? malformedB?.[1] ?? "").trim().replace(/太野/g, "大野")}`);
-			continue;
-		}
-		if (spoken.length > 0 && !/^[（(].*[）)]$/.test(line)) {
-			appendOcrContinuation(spoken, line);
-		}
-	}
-	return spoken;
-}
-
-function groupSentences(lines: string[], sentenceCount: number, sectionIndex: number) {
-	const override = dialogueLineCounts[sectionIndex];
-	const baseSize = Math.floor(lines.length / sentenceCount);
-	const remainder = lines.length % sentenceCount;
-	const groupSizes = override?.reduce((total, size) => total + size, 0) === lines.length ? override : (baseSize > 0
-		? Array.from({ length: sentenceCount }, (_, index) => baseSize + (index < remainder ? 1 : 0))
-		: null);
-	if (!groupSizes || groupSizes.reduce((total, size) => total + size, 0) !== lines.length) {
-		return Array.from({ length: sentenceCount }, () => "文本待校对");
-	}
-	let offset = 0;
-	return groupSizes.map((size) => {
-		const dialogue = lines.slice(offset, offset + size);
-		offset += size;
-		return dialogue.length > 0 ? dialogue.join("\n") : "文本待校对";
-	});
-}
-
-function groupNarratives(raw: string, sectionIndex: number) {
-	const headingPatterns = sectionIndex === 55
-		? [/^（(?:意見|Stating|意见)/, /^（(?:面接|At an Interview|面试)/]
-		: [/^（(?:旅先|What Happened|在旅行)/, /^（(?:映画|Impression|电影)/];
-	const lines = raw.split("\n").map((line) => line.trim());
-	const starts = headingPatterns.map((pattern) => lines.findIndex((line) => pattern.test(plainJapaneseText(line))));
-	if (starts.some((start) => start < 0)) return ["文本待校对", "文本待校对"];
-	return starts.map((start, index) => lines.slice(start, starts[index + 1] ?? lines.length)
-		.filter((line) => line && !/^[ぁ-ゖァ-ヺー・]+$/.test(line) && !/^(?:Unit|section|[0-9①-⑳]+)$/.test(line))
-		.join("\n"));
-}
 
 function FuriganaText({ text }: { text: string }) {
 	return <>{text.split("\n").map((line, lineIndex) => {
@@ -299,10 +159,6 @@ function FuriganaText({ text }: { text: string }) {
 			})}
 		</span>;
 	})}</>;
-}
-
-function plainJapaneseText(text: string) {
-	return text.replace(/\{\{(.+?)\|.*?\}\}/g, "$1");
 }
 
 function scrollTranscriptRowToReadingPosition(row: HTMLElement) {
@@ -583,22 +439,20 @@ function App() {
 		void Promise.all(languagePaths.map((source) => fetch(source).then((response) => response.text())))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
-				const normalizedJapanese = normalizeOcrBlock(jp);
-				const normalizedChinese = normalizeOcrBlock(zh);
-				const normalizedEnglish = normalizeOcrBlock(en);
-				const japaneseLines = extractSpokenLines(normalizedJapanese);
-				const chineseLines = extractSpokenLines(normalizedChinese);
-				const englishLines = extractSpokenLines(normalizedEnglish);
-				const isNarrative = !course.trackAudio && current.index >= 55;
-				setTranscript({
-					jp: course.trackAudio ? [normalizedJapanese] : isNarrative ? groupNarratives(normalizedJapanese, current.index) : groupSentences(japaneseLines, current.sentenceCount, current.index),
-					zh: course.trackAudio ? [normalizedChinese] : isNarrative ? groupNarratives(normalizedChinese, current.index) : groupSentences(chineseLines, current.sentenceCount, current.index),
-					en: course.trackAudio ? [normalizedEnglish] : isNarrative ? groupNarratives(normalizedEnglish, current.index) : groupSentences(englishLines, current.sentenceCount, current.index),
-				});
+				if (course.trackAudio) {
+					setTranscript({ jp: [normalizeOcrBlock(jp)], zh: [normalizeOcrBlock(zh)], en: [normalizeOcrBlock(en)] });
+					return;
+				}
+				// Beginner transcripts are canonical text. Dialogue sections are split
+				// into per-clip cards with the same audio-verified group sizes for
+				// every language, so a translation can never drift onto another clip.
+				const isNarrative = current.index >= 55;
+				const group = (raw: string) => isNarrative ? groupNarratives(raw, current.index) : groupBeginnerDialogue(raw, current.index);
+				setTranscript({ jp: group(jp), zh: group(zh), en: group(en) });
 			})
 			.catch(() => { if (!disposed) setTranscript(null); });
 		return () => { disposed = true; };
-	}, [course.trackAudio, current.index, current.sentenceCount]);
+	}, [course.trackAudio, current.index]);
 
 	useEffect(() => {
 		const sourceCard = sourceCardRef.current;

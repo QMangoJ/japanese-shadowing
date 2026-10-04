@@ -1,44 +1,20 @@
-3
-A: Akiko, you and Te
-along well, don't' y
-B: Yeah, we're more th：
-but not quite a coupi
-A: What do you thin
-T-shirts? This colc
-isn't it？
-B: Yeah, that color's go
-A: My eyes are exhau
-looking at the the
-screen for so long.
-B: Don't you think y
-use some eye drop：
-them a break for av
-A: Don't you think M
-mura is cranky latel：
-reason？
-B: Yeah, s/he must b
-Out.
-A: Ah, Ihad alot to eat
-eat a thing more.
-B: I know! It would b
-to fall asleep.
-A: Say, I ordered so
-about 10 minutes a
-B: Oh, I'm sorry. 1llg
-it right away.
-A: Say, this curry has
-in it...
-B: Oh, I'm sorry. T'll
-with a fresh dish.
-A: Excuse me, Iboug
-brella here yester
-broke right away...
-B: Oh, I'm sorry about
-you show me what
-A: Ummm, excuse me
-turn this sweater？
-B: If you have the rece
-problem.
-A: Sir, we will refund
-ey.
-B: Oh, thank you.
+A：Akiko, things are going well with Takuya, aren't they?
+B：Yeah, but we're more than friends, less than lovers.
+A：What do you think of this T-shirt? This color is nice, right?
+B：Yeah, that color really suits you.
+A：My eyes got tired from staring at the computer screen.
+B：Shouldn't you use some eye drops and take a little break?
+A：Doesn't Mr./Ms. Kitamura seem short-tempered lately?
+B：Yeah, he/she must be really stressed out.
+A：Ah, I ate so much. I can't eat any more.
+B：Seriously! I wish I could just go to sleep like this.
+A：Um, I ordered curry about ten minutes ago...
+B：Oh, I'm sorry. I'll go check right away.
+A：Um, there's a hair in this curry...
+B：Oh, I'm terribly sorry. I'll replace it with a new one.
+A：Um, I bought this umbrella here yesterday, but it broke right away...
+B：I'm very sorry about that. Could you show me what condition it's in?
+A：Um, excuse me. Can I return this sweater?
+B：If you have the receipt, that's fine.
+A：Then here is your refund.
+B：Oh, thank you.

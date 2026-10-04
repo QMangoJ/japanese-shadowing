@@ -1,41 +1,20 @@
-5
-A: What do you norma
-Sundays？
-B: Well, Iwatch YouTul
-a manga or somethi
-laze around.
-A: What the..？ This ou
-got cheap！
-B: It really has. It's sc
-off. What a deal.
-A: What are you doing
-summer break？
-B: Iplan to take a trip or
-to China.
-A: How's your life in Jal
-ten used to it？
-B: Yes. I can even eat 1
-fermented soy bean
-A:Oh, hi Lisa, it's bee
-What are you doing n
-B: I'm working in an I，
-ny in Shinjuku.
-A: How do you get tos
-B: From my house, I car
-the Yamanote line.
-A: Shouldn't we get go
-B：Oh, I'm sorry. But do
-ifI visit the restroon
-A: Say, did you do yol
-work？
-B: Nah. Ill do it on Satu
-Sunday.
-A: Mr. Yamada, where
-live？
-B: I live near here. It is
-there.
-A: Would you like to g
-tain climbing on the v
-B: That sounds good. Bi
-like the weather may
-this weekend.
+A：What do you usually do on Sundays?
+B：Hmm, watch YouTube, read manga... I just laze around.
+A：Oh, these clothes are on sale!
+B：You're right. It says 70% off. Gotta buy it.
+A：What are you doing for summer vacation?
+B：This year I plan to go to China by myself.
+A：How's life in Japan? Used to it yet?
+B：Yes. I can even eat natto now.
+A：Oh, Lisa, long time no see. What are you doing these days?
+B：I'm working at an IT company in Shinjuku.
+A：How do you get to school?
+B：It's a straight shot on the Yamanote Line from my place.
+A：Shall we get going?
+B：Oh, sorry. Can I use the restroom first?
+A：Hey, have you done the homework yet?
+B：No. I'm going to do it on the weekend.
+A：Where do you live, Mr./Ms. Yamada?
+B：I live in this neighborhood. Just over there.
+A：Would you like to go hiking this weekend?
+B：Sounds good. But I heard the weather's going to turn bad this weekend.

@@ -1,40 +1,20 @@
-1
-A: Hey, do you know th
-Wi-Fi？
-B: Yeah, Iknow it. Hel
-2
-A: How much for a sing
-B: Oh, it is 8,000 yen r
-A: I bought a smartpho
-day.
-B: Really! Where didy
-A: Where is John's hou
-B: It is in Shinjuku. Iti
-school.
-A: What kind of person
-teacher？
-B: My teacher is che
-kind.
-10
-A: Mr. Yamada, what is
-by？
-B: My hobby? Hmm,b
-Isuppose.
-A: What do you think ol
-anime？
-B: I think they have g
-lines.
-A: Here, have a look at
-a photo of Switzerle
-B: Wow, the snow is 1
-Those are the Alps，
-A: It is really cold ba
-right now, isnit it C
-How cold is it？
-B: Yes, that's right. M
-in the North, so it g
-to about minus 10d
-A: Please put your sea
-your name.
-B: Oh no, I didn't brir
-me today.
+A：Hey, do you know the school Wi-Fi?
+B：Yeah. Here, look at this.
+A：How much is a single room?
+B：It's 8,000 yen per night.
+A：I bought a smartphone yesterday.
+B：Oh, where did you buy it?
+A：Where do you live, John?
+B：In Shinjuku. Near the school.
+A：What is your teacher like, Park?
+B：My teacher is cheerful and kind.
+A：Mr./Ms. Yamada, what are your hobbies?
+B：Hobbies? Hmm, bouldering, I guess.
+A：What do you think of Japanese anime?
+B：I think the stories are really good.
+A：Look at this. It's a photo of Switzerland.
+B：Wow, the snow is beautiful. That's the Alps!
+A：It must be really cold in your country now, Chris. What's the temperature?
+B：Well, my town is in the north, so it's about minus ten degrees.
+A：Please put your seal next to your name.
+B：What? I didn't bring it today.

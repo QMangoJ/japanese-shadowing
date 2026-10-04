@@ -1,32 +1,22 @@
-2
-3
-5
-8
-9
-10
-A: Pleased to meet y
-Watanabe.
-B: Iam Tanaka. Please
-you too.
-A: Are you Michael？
-B: Yes, that's right.
-A: Are you Mr. Tanaka
-B: No, my name is Nak
-A: What is Japanese for
-B ： “School” is “gakkoc
-A: What is that over th
-B: Oh, that is a shrine.
-A: What floor is Mr/s.
-apartment on！
-B: The 3rd floor.
-A: What is your name？
-B: I'm Pedro.
-A: Where are you from
-B: I am from Spain.
-A : I'd like one medium
-fee.
-B: Sure. A medium ho
-A: How far is it to the s
-B: It is about 5 minutes
-A: Where is Shinjukus
-B: It is over there.
+A：Nice to meet you. I'm Watanabe.
+B：I'm Tanaka. Pleased to meet you.
+A：Are you Michael?
+B：Yes, that's right.
+A：Are you Mr./Ms. Tanaka?
+B：No, I'm Nakata.
+A：What is the English word "school" in Japanese?
+B："School" is "gakkō."
+A：What is that over there?
+B：Oh, that's a shrine.
+A：What floor is Mr./Ms. Yamada's apartment on?
+B：The third floor.
+A：Your name?
+B：I'm Pedro.
+A：Where are you from?
+B：Spain.
+A：One medium hot coffee, please.
+B：Sure, a medium hot coffee.
+A：How far is it to the station?
+B：About five minutes on foot.
+A：Where is Shinjuku Station?
+B：It's over there.

@@ -1,43 +1,20 @@
-1
-A: Hey, hey, you know
-B: Oh, I'm sorry, rightn
-so good... Is later Ol
-2
-A: Excuse me, would：
-the soy sauce？
-B: Yes, of course.
-55
-A: I'mgoing to a movie
-urday; would you li
-with？
-B: Oh, I'm sorry. I har
-thing on Saturday.
-A: Ihave a headache fro
-ing too much yestere
-B: Are you alright? Yo
-take some medicine.
-A: Actually, Ihad a dat
-day with May.
-B: Wow...are you seriol
-6
-A: Ihear atyphoon is co
-afternoon.
-B: Yeah, we better go ho
-7
-A: Say, has the bus no
-yet？
-B: Yeah, it's late.
-8
-10
-A: What the...？ Is the tin
-watch accurate？
-B: Yeah, it's on time. I
-same time.
-A: Is this OK as the fly
-event？
-B: Hmm..it's great, isn
-go with it.
-A: Can you come to the
-morrow？
-B: Yeah, Pll be a bit late
-going.
+A：Hey, hey, listen.
+B：Oh, sorry, I'm kind of busy right now... Can it wait?
+A：Excuse me, could you pass the soy sauce?
+B：Sure, here you go.
+A：I'm going to a movie next Saturday. Would you like to come?
+B：Oh, sorry. I have plans on Saturday...
+A：I drank too much yesterday and have a headache.
+B：Are you OK? You should take some medicine.
+A：Actually, I went on a date with Mei yesterday.
+B：What, seriously?
+A：I heard a typhoon is coming this afternoon.
+B：Yeah, we'd better go home early.
+A：Hey, isn't the bus here yet?
+B：No, it's late.
+A：Huh? Is this clock right?
+B：Yeah, it's right. It's the same time as mine.
+A：Is this flyer for the event OK?
+B：Oh, that's nice. Let's go with this.
+A：Can you come to the drinking party tomorrow?
+B：Yeah, I'll be a little late, but I'll come.
