@@ -1,26 +1,20 @@
-I A: What time is it nov
-B: It's 9 o'clock.
-2 A: What time's it now
-B:It's 4.
-3
-A：What time did you
-last night？
-B: About 11:30 or so.
-A A: What times is the t
-B: It starts at 10 o'clo
-5, A: What is the date to
-B: It is April first.
-6 A: What day is it toda
-B: It's Wednesday.
-Z A: When is your birth
-B: It is August 20th.
-B
-A: From and to what 1
-bank open？
-B: It is open from 9AN
-g A: What year is it this
-B: 2021. That is the 3
-Reiwa.
-10 A: How long since yo
-Japan？
-B: One year and 3 mo
+A：What time is it now?
+B：It's nine o'clock.
+A：What time is it?
+B：It's four.
+A：What time did you go to bed yesterday?
+B：Around eleven thirty.
+A：What time does the test start?
+B：It starts at ten.
+A：What's the date today?
+B：It's April 1st.
+A：What day is it today?
+B：It's Wednesday.
+A：When is your birthday?
+B：It's August 20th.
+A：What are the bank's hours?
+B：From 9 a.m. to 3 p.m.
+A：What year is it?
+B：2021. Reiwa 3.
+A：How long have you been in Japan?
+B：One year and three months.

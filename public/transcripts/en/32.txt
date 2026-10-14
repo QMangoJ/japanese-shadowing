@@ -1,47 +1,20 @@
-2
-10
-A:Im sorry. Excuse n
-you mind giving _
-help？
-B: Yes, sure. What sho
-A: Can I pay here？
-B: Yes. But could yo
-stand in line there s
-go in order？
-A: What are you into le
-B: Yoga, I suppose. Ar
-to it, my body is in go
-A: WoW,this air cond
-just 50,000 yen. Tha
-isn't it？
-B: Yeah, it's a bit of an
-el, but it's definitel
-deal.
-A: The fireworks displea
-row has been cancel
-the typhoon.
-B: Oh, Isee, rats. And
-ready to wear a yuke
-A: Just 2 rice balls for lu
-that be enough？
-B: Not at all. But I'm
-light lunch. So Id
-sleepy.
-A: This LED light is fro
-yen shop. Can youb
-B: Wow, what a bargail
-believe it's just 100
-A: Did you hear the p
-changed to next Sati
-B： Oh， is that right？ Th
-I took time off my j
-this week.
-A: Sir, you can also
-self-checkout over tl
-B: Thank you very mucl
-it.
-A: Five times more ped
-the entrance exam for
-versity than get in.
-B: Well, why not give
-there's nothing to los
+A：Excuse me. Could you help me for a moment?
+B：Sure. What should I do?
+A：Excuse me, is this where I pay?
+B：Yes. We're serving customers in order, so could you please line up over there?
+A：Are you into anything lately?
+B：Yoga, I guess. Thanks to it, I'm in better shape.
+A：Wow, this air conditioner is 50,000 yen. That's cheap.
+B：Yeah, it's a slightly older model, but it's definitely a good buy.
+A：I heard tomorrow's fireworks festival is canceled because of the typhoon.
+B：Oh, really? That's too bad. I was finally going to wear a yukata...
+A：Just two rice balls for lunch? Is that enough?
+B：Not at all. But I keep lunch light so I don't get sleepy.
+A：This LED light is from a 100-yen shop. Can you believe it?
+B：Wow, this is a real find. I can't believe it's 100 yen!
+A：Did you know the drinking party changed to next Saturday?
+B：What, really? Oh, man, I turned down my part-time shift this week.
+A：Ma'am/Sir, you can also use the self-checkout over there...
+B：Thank you. I'll do that.
+A：I heard the acceptance ratio for that university's entrance exam is five to one.
+B：Well, why not give it a shot? You've got nothing to lose.

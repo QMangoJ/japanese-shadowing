@@ -34,9 +34,10 @@
 	},
 	"private": true,
 	"scripts": {
-		"build": "tsc -b && vite build",
+		"build": "node scripts/audit-sentence-insights.mjs && tsc -b && vite build",
 		"audit:transcripts": "node scripts/verify-beginner-transcripts.mjs",
 		"audit:vocabulary": "node scripts/audit-reviewed-vocabulary.mjs",
+		"audit:insights": "node scripts/audit-sentence-insights.mjs",
 		"cf-typegen": "wrangler types",
 		"check": "tsc && vite build && wrangler deploy --dry-run",
 		"deploy": "wrangler deploy",

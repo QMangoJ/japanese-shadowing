@@ -1,47 +1,20 @@
-2
-5
-A: Hello. （lit. I appreci
-ness as always.） M
-mamoto and I have
-for 10 o'clock. Is M
-Sales department a
-B: Yes, That's me. Iwas
-A: TO get to the intern
-bition center, wher
-posed to change tra
-B: It's convenient at S
-A: It's really gotten la
-Will we make the l
-B: It'll probably be te
-Let's hurry！
-（At the Station）
-A: Excuse me, where
-B: Go up the staircase
-dle of the platform
-mediately on your
-A: Does this train stop a
-B: No, because it's an （
-a local train of the Y
-across the platform
-A: Are you working re
-home now？
-B: Yes, I can take my
-morning as there's：
-time.
-A: Isn't LINE a hassl
-you have to reply r
-B: Do you think so?Itl
-venient because it's
-“Read.”
-A: If you have a comi
-feel free to tell me.
-B: At this point, nothil
-ular to say.
-A: Thank you for cor
-way here.
-B: Not at all. I only v
-have been useful.
-A: I'm pretty sure this
-year, wasn't it？
-B: That's right. With a
-it feels like a bonus
+A：Thank you for your time. I'm Yamamoto, and I have a 10 o'clock appointment. Is Mr./Ms. Imai from the sales department available?
+B：Yes, that's me. I've been expecting you.
+A：Where do I change trains to get to the International Exhibition Center again?
+B：Shin-Kiba is convenient.
+A：It got really late. Will you make the last train?
+B：It'll be close. Let's hurry!
+A：Excuse me, where is the restroom?
+B：Go up the stairs in the middle of the platform, and it's right on your right.
+A：Does this train stop at Akihabara?
+B：No, it's a rapid train. But the Yamanote Line across the platform stops at every station.
+A：Are you working remotely from home now?
+B：Yes. There's no commute, so I can take it easy in the morning.
+A：Isn't LINE a pain? You have to reply right away...
+B：You think so? I think it's convenient because it shows when messages are read.
+A：If you have any opinions, please feel free to tell us.
+B：Nothing in particular for now.
+A：Thank you for taking the trouble to come all this way.
+B：Not at all. I'm the one who should apologize for not being of help.
+A：This year is a leap year, isn't it?
+B：That's right. February has one extra day. Doesn't it feel like a bonus?

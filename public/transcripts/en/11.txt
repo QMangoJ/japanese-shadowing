@@ -1,36 +1,20 @@
-2
-5
-A: Where are you goin
-B: Just over there.
-A: Where are you goin
-B: I'm just going to ti
-nience store to buy a
-lunch.
-A: Would you like toh
-with me？
-B: Yes, that would ben
-should we have to e
-A: Say, you want to h
-together？
-B: Yeah, that'd be nice
-before we go, do ye
-Icall a friend？
-A: Have you already h
-B: No, not yet. What：
-Yamada！
-A: What is your blood
-B: Mine is type A. W
-Mari？
-A: It's really cooled do
-it？
-B: That is ture.
-A: How old are you，
-da？
-B: Wha...that's a secr
-ask such a thing.
-A: Can you tell me ho
-this kanji？
-B : Nooo....what the...Id
-Try asking someone
-A: Hello? Can you talk
-B: Yes, it's fine.
+A：Where are you going?
+B：Just out for a bit.
+A：Where are you going?
+B：I'm just going to the convenience store to buy a bento.
+A：Would you like to have lunch together?
+B：Yes, sounds good. What shall we eat?
+A：Hey, want to have lunch together?
+B：Yeah, sure. Oh, but can I call a friend before we eat?
+A：Have you had lunch yet?
+B：No, not yet. How about you, Mr./Ms. Yamada?
+A：What's your blood type?
+B：I'm type A. How about you, Mari?
+A：It's gotten quite cool, hasn't it?
+B：Yes, it has.
+A：How old are you, Mr./Ms. Yamada?
+B：Huh? That's a secret. Don't ask.
+A：Tell me how to read this kanji.
+B：Hmm, what is it... I don't know. Try asking someone else.
+A：Hello? Is now a good time?
+B：Yeah, it's fine.

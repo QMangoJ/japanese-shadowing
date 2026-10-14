@@ -8,41 +8,13 @@ const japaneseDir = join(root, "public", "transcripts", "jp");
 const rubyDir = join(root, "public", "transcripts", "jp-ruby");
 const audioDir = join(root, "public", "audio");
 
-const sentenceCounts = [
-	10, 10, 10, 10, 10, 10, 10, 10, 10, 6,
-	10, 10, 10, 10, 10, 10, 10, 10, 6, 6,
-	10, 10, 10, 10, 10, 10, 10, 6, 5, 5,
-	10, 10, 10, 10, 10, 10, 10, 10, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-	2, 2, 2, 2,
-];
+const zhDir = join(root, "public", "transcripts", "zh");
+const enDir = join(root, "public", "transcripts", "en");
 
-const dialogueGroupSizes = {
-	4: [2, 2, 2, 2, 2, 2, 4, 2, 2, 2],
-	10: [4, 4, 4, 4, 4, 4],
-	19: [4, 4, 4, 4, 4, 4],
-	20: [4, 4, 4, 4, 4, 4],
-	25: [2, 2, 2, 2, 2, 2, 2, 3, 2, 2],
-	28: [4, 4, 4, 4, 4, 4],
-	29: [4, 4, 4, 4, 4],
-	30: [4, 4, 4, 4, 4],
-	39: [4, 4, 4, 4, 4, 4],
-	40: [4, 4, 4, 4, 4, 4],
-	41: [4, 4, 4, 4, 4, 4],
-	42: [4, 4, 4, 4, 4, 4],
-	43: [4, 4, 4, 4, 4, 4],
-	44: [4, 4, 4, 4, 4, 4],
-	45: [4, 4, 4, 4, 4, 4],
-	46: [4, 4, 4, 4, 4, 4],
-	47: [4, 4, 4, 4, 4, 4],
-	48: [4, 4, 4, 4, 4, 4],
-	49: [4, 4, 4, 4, 4, 4],
-	50: [4, 4, 4, 4, 4, 4],
-	51: [4, 4, 4, 4, 4, 4],
-	52: [4, 4, 4, 4, 4, 4],
-	53: [12, 12],
-	54: [8, 10],
-};
+// Single source of truth shared with the app (src/react-app/transcriptParsing.ts).
+const { sentenceCounts, dialogueGroupSizes } = JSON.parse(
+	readFileSync(join(root, "src", "react-app", "beginnerDialogueGroups.json"), "utf8"),
+);
 
 function stripRuby(text) {
 	return text.replace(/\{\{([^|{}]+)\|[^{}]+\}\}/g, "$1");
@@ -70,13 +42,27 @@ for (let section = 1; section <= sentenceCounts.length; section += 1) {
 	if (section <= 54) {
 		const lines = plain.trim().split("\n");
 		if (lines.some((line) => !/^[AB]：\S/.test(line))) fail(`Section ${id}: malformed dialogue line`);
-		const sizes = dialogueGroupSizes[section] ?? Array.from({ length: sentenceCounts[section - 1] }, () => 2);
+		const sizes = dialogueGroupSizes[String(section)];
+		if (!sizes || sizes.length !== sentenceCounts[section - 1]) fail(`Section ${id}: group sizes do not match the audio clip count`);
 		const expectedLines = sizes.reduce((total, size) => total + size, 0);
 		if (lines.length !== expectedLines) fail(`Section ${id}: expected ${expectedLines} dialogue lines, found ${lines.length}`);
+		const speakers = lines.map((line) => line[0]).join("");
+		// Translations are split into cards with the same group sizes, so they
+		// must have exactly one line per Japanese line, with the same speaker.
+		for (const [language, dir] of [["zh", zhDir], ["en", enDir]]) {
+			const translated = readFileSync(join(dir, `${id}.txt`), "utf8").trim().split("\n");
+			if (translated.some((line) => !/^[AB]：\S/.test(line))) fail(`Section ${id}: malformed ${language} dialogue line`);
+			if (translated.length !== lines.length) fail(`Section ${id}: ${language} has ${translated.length} lines, Japanese has ${lines.length}`);
+			if (translated.map((line) => line[0]).join("") !== speakers) fail(`Section ${id}: ${language} speaker order differs from Japanese`);
+		}
 		dialogueLineCount += lines.length;
 	} else {
 		const headings = plain.split("\n").filter((line) => /^（.+）$/.test(line));
 		if (headings.length !== 2) fail(`Section ${id}: expected two narrative headings`);
+		for (const [language, dir] of [["zh", zhDir], ["en", enDir]]) {
+			const translated = readFileSync(join(dir, `${id}.txt`), "utf8");
+			if (translated.split("\n").filter((line) => /^（.+）$/.test(line)).length !== 2) fail(`Section ${id}: expected two ${language} narrative headings`);
+		}
 	}
 
 	for (let sentence = 1; sentence <= sentenceCounts[section - 1]; sentence += 1) {

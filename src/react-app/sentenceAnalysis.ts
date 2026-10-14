@@ -1,4 +1,5 @@
 import { reviewedVocabulary, type VocabularyInsight } from "./reviewedVocabulary";
+import { grammarPatterns, sentenceNotes, type GrammarRef, type SentenceNote } from "./sentenceNotes";
 
 export type { VocabularyInsight } from "./reviewedVocabulary";
 
@@ -23,6 +24,7 @@ const legacyGlossary: VocabularyInsight[] = [
 	{ term: "何", reading: "なに／なん", meaning: "什么／哪一个", detail: "读音随接续变化；「何時」中读「なん」。" },
 	{ term: "何時", reading: "なんじ", meaning: "几点", detail: "询问钟点时间时使用。" },
 	{ term: "時", reading: "じ", meaning: "点（钟点）", detail: "接在数字后表示时间，如「9時」。" },
+	{ term: "大丈夫", reading: "だいじょうぶ", meaning: "没问题；不要紧", detail: "询问对方是否方便、是否没事，或婉拒对方好意时都可用。" },
 	{ term: "時半", reading: "じはん", meaning: "……点半", detail: "接在小时后，表示该小时过了三十分钟。" },
 	{ term: "昨日", reading: "きのう", meaning: "昨天", detail: "相对日期名词，通常不需要接助词「に」。" },
 	{ term: "今日", reading: "きょう", meaning: "今天", detail: "相对日期名词，通常不需要接助词「に」。" },
@@ -87,10 +89,10 @@ const legacyGlossary: VocabularyInsight[] = [
 	{ term: "仕事", reading: "しごと", meaning: "工作", detail: "职业、任务或要做的事。" },
 	{ term: "慣れる", reading: "なれる", meaning: "习惯／适应", detail: "对象常用助词「に」标记，如「新しい仕事に慣れる」。", aliases: ["なれた", "なれません", "慣れ"] },
 	{ term: "朝", reading: "あさ", meaning: "早晨", detail: "一天开始的时段。" },
-	{ term: "申し上げる", reading: "もうしあげる", meaning: "说／表达（自谦）", detail: "「言う」的郑重自谦语；「と申します」也用于自我介绍。", aliases: ["申し", "申します"] },
-	{ term: "お世話になる", reading: "おせわになる", meaning: "承蒙关照", detail: "表达受到对方照顾、帮助的礼貌说法。" },
+	{ term: "申し上げる", reading: "もうしあげる", meaning: "说／表达（自谦）", detail: "「言う」的郑重自谦语；「と申します」也用于自我介绍。", aliases: ["申し上げ"] },
+	{ term: "お世話になる", reading: "おせわになる", meaning: "承蒙关照", detail: "表达受到对方照顾、帮助的礼貌说法。", aliases: ["お世話になって", "お世話になりま"] },
 	{ term: "予定", reading: "よてい", meaning: "计划／安排", detail: "预先定好的日程或打算。" },
-	{ term: "特に", reading: "とくに", meaning: "特别／尤其", detail: "常与否定搭配，如「特にない」。" },
+	{ term: "特に", reading: "とくに", meaning: "特别／尤其", detail: "常与否定搭配，如「特にない」。", aliases: ["とくに"] },
 	{ term: "久しぶり", reading: "ひさしぶり", meaning: "好久不见／久违", detail: "隔了较长时间后再次见面或做某事。" },
 	{ term: "台風", reading: "たいふう", meaning: "台风", detail: "热带低气压带来的强风暴雨天气。" },
 	{ term: "出張", reading: "しゅっちょう", meaning: "出差", detail: "因工作暂时前往外地。" },
@@ -113,7 +115,7 @@ const legacyGlossary: VocabularyInsight[] = [
 	{ term: "洗濯物", reading: "せんたくもの", meaning: "洗好的衣物", detail: "需要晾晒或收起的衣物。" },
 	{ term: "掃除", reading: "そうじ", meaning: "打扫", detail: "清理房间、地板等；与「する」搭配。" },
 	{ term: "迷惑", reading: "めいわく", meaning: "麻烦／困扰", detail: "「迷惑をかける」表示给别人添麻烦。" },
-	{ term: "申し訳ない", reading: "もうしわけない", meaning: "非常抱歉", detail: "比「すみません」更郑重的道歉。" },
+	{ term: "申し訳ない", reading: "もうしわけない", meaning: "非常抱歉", detail: "比「すみません」更郑重的道歉；礼貌形为「申し訳ありません／申し訳ございません」。", aliases: ["申し訳"] },
 	{ term: "甘いもの", reading: "あまいもの", meaning: "甜食", detail: "「〜に目がない」表示对某物特别喜欢、难以抗拒。" },
 	{ term: "会社帰り", reading: "かいしゃがえり", meaning: "下班回家途中", detail: "「帰り」接在地点或活动后，表示返回途中。" },
 	{ term: "寄る", reading: "よる", meaning: "顺路去／顺便停留", detail: "常用「〜に寄る」表示顺道去某地。", aliases: ["寄ると", "寄っ"] },
@@ -167,7 +169,7 @@ const legacyGlossary: VocabularyInsight[] = [
 	{ term: "行く", reading: "いく", meaning: "去", detail: "向目的地移动；常接地点助词「に／へ」。", aliases: ["行き", "行か", "行け", "行っ", "行った"] },
 	{ term: "来る", reading: "くる", meaning: "来", detail: "向说话人所在或基准地点移动。", aliases: ["来て", "来る", "来た", "来そう"] },
 	{ term: "帰る", reading: "かえる", meaning: "回去／回家", detail: "回到原来的地点。", aliases: ["帰っ", "帰り"] },
-	{ term: "会う", reading: "あう", meaning: "见面", detail: "与人相见；对象通常用助词「に」。", aliases: ["合っ", "会っ"] },
+	{ term: "会う", reading: "あう", meaning: "见面", detail: "与人相见；对象通常用助词「に」。", aliases: ["会っ"] },
 	{ term: "見る", reading: "みる", meaning: "看", detail: "观看、查看。", aliases: ["見", "見て", "見た", "見え"] },
 	{ term: "食べる", reading: "たべる", meaning: "吃", detail: "进食；对象通常用助词「を」。", aliases: ["食べ", "食べて"] },
 	{ term: "飲む", reading: "のむ", meaning: "喝", detail: "饮用液体；对象通常用助词「を」。", aliases: ["飲み", "飲ん"] },
@@ -198,37 +200,6 @@ const n5FoundationTerms = new Set([
 
 const glossary = [...reviewedVocabulary, ...legacyGlossary];
 
-type GrammarRule = { point: string; explanation: string; matches: (text: string) => boolean };
-
-const grammarRules: GrammarRule[] = [
-	{ point: "〜なければならない／〜なくちゃ", explanation: "表示必须做某事；「〜なくちゃ」是口语中省略后的说法。", matches: (text) => /なければならない|なくちゃ|なきゃ/.test(text) },
-	{ point: "〜たほうがいい", explanation: "用于给建议，意思是“最好……”。", matches: (text) => /たほうがいい/.test(text) },
-	{ point: "〜てしまう／〜ちゃう", explanation: "表示动作完成，也常带有意外、遗憾的语气；「〜ちゃう」是口语缩略。", matches: (text) => /てしま|ちゃう|じゃう/.test(text) },
-	{ point: "〜ておく", explanation: "表示预先为将来做准备：先把……做好。", matches: (text) => /ておく|ておき/.test(text) },
-	{ point: "〜てみる", explanation: "表示尝试做某事：试着……看看。", matches: (text) => /てみる|てみて/.test(text) },
-	{ point: "〜てもらう／〜てくれる", explanation: "表示接受或得到他人为自己做某事的帮助。", matches: (text) => /てもら|てくれ/.test(text) },
-	{ point: "〜ようと思う", explanation: "表示说话人目前的打算：想要……。", matches: (text) => /ようと思/.test(text) },
-	{ point: "〜ことができる", explanation: "表示能力或可能：能够……。", matches: (text) => /ことができ/.test(text) },
-	{ point: "〜ことにする", explanation: "表示说话人作出决定：决定……。", matches: (text) => /ことにし/.test(text) },
-	{ point: "〜ことになる", explanation: "表示外部决定、规则或自然结果：变成／决定……。", matches: (text) => /ことにな/.test(text) },
-	{ point: "〜ように", explanation: "常表示目的、结果或方式；根据前后文理解为“为了能……”或“像……那样”。", matches: (text) => /ように/.test(text) },
-	{ point: "〜らしい", explanation: "表示传闻或根据线索作出的推测：听说／好像……。", matches: (text) => /らしい/.test(text) },
-	{ point: "〜そう", explanation: "表示样态或传闻；这里结合前文理解为“看起来／听说……”。", matches: (text) => /そう/.test(text) },
-	{ point: "〜かもしれない", explanation: "表示不确定的可能性：也许……。", matches: (text) => /かもしれ/.test(text) },
-	{ point: "〜たり〜たりする", explanation: "列举代表性的动作或状态：时而……时而……。", matches: (text) => /たり.*たり/.test(text) },
-	{ point: "〜ても", explanation: "表示让步：即使……也……。", matches: (text) => /ても/.test(text) },
-	{ point: "〜ので", explanation: "表示原因，语气通常比「から」更柔和：因为……所以……。", matches: (text) => /ので/.test(text) },
-	{ point: "〜から", explanation: "可表示原因“因为……”，也可表示起点“从……开始”；需按句意判断。", matches: (text) => /から/.test(text) },
-	{ point: "〜けど", explanation: "连接前后内容，表示转折、铺垫或语气缓和：不过／但是……。", matches: (text) => /けど/.test(text) },
-	{ point: "〜んです", explanation: "用于补充说明理由、背景或强调解释；口语中很常见。", matches: (text) => /んです|のです/.test(text) },
-	{ point: "〜てください", explanation: "礼貌地请求对方做某事：请……。", matches: (text) => /てください/.test(text) },
-	{ point: "〜たい", explanation: "接在动词词干后表示愿望：想要……。", matches: (text) => /(?:^|[^っ])(?:たい(?=です|と思|ん|な|よ|ね|けど|から|ので|[。！？、]|$)|たく(?=ない|て|なっ|ありません))/.test(text) },
-	{ point: "〜ている", explanation: "可表示正在进行、习惯动作或状态持续；结合语境理解。", matches: (text) => /ている|ていま|てる/.test(text) },
-	{ point: "〜ですか", explanation: "礼貌疑问句；句末「か」把陈述变成问题。", matches: (text) => /ですか[？?]?/.test(text) },
-	{ point: "时间＋に", explanation: "「に」标记动作发生的具体时间，如「9時に」。", matches: (text) => /(?:時|日|曜日|月|年)に/.test(text) },
-	{ point: "〜から〜まで", explanation: "表示时间或地点的起点与终点：从……到……。", matches: (text) => /から.*まで/.test(text) },
-];
-
 function firstMatch(text: string, words: string[]) {
 	return words.reduce<{ position: number; length: number } | null>((match, word) => {
 		const position = text.indexOf(word);
@@ -238,24 +209,53 @@ function firstMatch(text: string, words: string[]) {
 	}, null);
 }
 
-/** Returns a compact, sentence-level explanation for beginner Sections 3+. */
-export function getSentenceInsight(section: number, text: string): SentenceInsight | null {
-	if (section < 3) return null;
-	const plain = text
+/** Key of a beginner sentence card in `sentenceNotes`, e.g. "25-6". */
+export function sentenceKey(section: number, sentence: number) {
+	return `${section}-${sentence}`;
+}
+
+export function plainSentenceText(text: string) {
+	return text
 		.replace(/\{\{(.+?)\|.*?\}\}/g, "$1")
 		.replace(/^\s*[AB]\s*[：:]\s*/gm, "")
 		.replace(/\s+/g, "");
-	const candidates = glossary
+}
+
+export function resolveGrammar(ref: GrammarRef): GrammarInsight & { literal?: string; pattern?: string } {
+	if (typeof ref !== "string") return { point: ref[0], explanation: ref[1], literal: ref[2] };
+	const [key, literal] = ref.split("@");
+	const pattern = grammarPatterns[key];
+	if (!pattern) throw new Error(`Unknown grammar pattern: ${key}`);
+	return { point: pattern.point, explanation: pattern.explanation, literal, pattern: key };
+}
+
+/** Returns the hand-written word and grammar notes for a beginner sentence card (Sections 3+). */
+export function getSentenceInsight(section: number, sentence: number, text: string): SentenceInsight | null {
+	if (section < 3) return null;
+	const plain = plainSentenceText(text);
+	const note: SentenceNote | undefined = sentenceNotes[sentenceKey(section, sentence)];
+	const dropped = new Set(note?.drop ?? []);
+	const extra = note?.v ?? [];
+	const extraTerms = new Set(extra.map((entry) => entry.term));
+	const candidates = [...extra, ...glossary.filter((entry) => !dropped.has(entry.term) && !extraTerms.has(entry.term))]
 		.map((entry) => ({ entry, match: firstMatch(plain, [entry.term, ...(entry.aliases ?? [])]) }))
 		.filter((candidate): candidate is { entry: VocabularyInsight; match: { position: number; length: number } } => candidate.match !== null)
-		.filter(({ entry }) => section < 11 || !n5FoundationTerms.has(entry.term))
 		.sort((a, b) => a.match.position - b.match.position || b.match.length - a.match.length);
+	// Resolve overlaps before hiding N5 words, so a longer N5 word such as
+	// 「大丈夫」 still prevents a shorter entry like 「丈夫」 from matching inside it.
 	const occupied: Array<{ start: number; end: number }> = [];
 	const vocabulary = candidates.filter(({ match }) => {
 		const overlaps = occupied.some((range) => match.position < range.end && match.position + match.length > range.start);
 		if (!overlaps) occupied.push({ start: match.position, end: match.position + match.length });
 		return !overlaps;
-	}).slice(0, 10).map(({ entry }) => entry);
-	const grammar = grammarRules.filter((rule) => rule.matches(plain)).slice(0, 3).map(({ point, explanation }) => ({ point, explanation }));
+	})
+		.filter(({ entry }) => section < 11 || extraTerms.has(entry.term) || !n5FoundationTerms.has(entry.term))
+		.filter(({ entry }, index, list) => list.findIndex((other) => other.entry.term === entry.term) === index)
+		.slice(0, 10)
+		.map(({ entry }) => entry);
+	const grammar = (note?.g ?? []).map((ref) => {
+		const { point, explanation } = resolveGrammar(ref);
+		return { point, explanation };
+	});
 	return { vocabulary, grammar };
 }

@@ -1,52 +1,24 @@
-LL
-2
-（A Phone Call at Work）
-A: Hello. This is Haya
-Sakura Family Com
-B: Hello, how are you
-have been in your cal
-Takahashi of Mirai Co
-A:Fine, thank you. And
-We have been in yol
-B: Is Manager Yamam
-General Affairs De
-available？
-A: Oh? Isn't this clock
-B: No. I set it 5 minuts
-purpose. So I will ne
-A: But it is not working
-Mr. Tanaka, you ar
-rushing.
-B: Oh, sorry, I will be （
-A: Shall we make a fin
-one last time？
-B: Yes. Just in case. Ift
-error, then we'd hav
-all over again.
-A: That is true. It's “has
-waste.””
-B: OK. Then shall we
-checking the list？
-A: Is the laundry dry？
-B: Um. I am not sure. It
-a little damp.
-A: It istaking longer than
-B: Yes. It depends on
-perature and humidit
-it？
-A: Can I ask you to cre
-of participants by to
-B: Oh, I am sorry. The
-for the application
-rOW, SO I can do it i
-after tomorrow work
-A: You seem busy. OKt
-ask somebody else.
-B: I am sorry. I am swe
-to my neck at the m
-A：Good morning, chie
-B: Good morning.
-A: Thank you very muck
-ing us yeasterday. I
-talking about variou
-B: It was fun. Let's do
+A：Hello. Sakura Family Corporation, Hayashi speaking.
+B：Thank you for your continued support. This is Takahashi from Mirai Corporation.
+A：Thank you for your continued support.
+B：Is General Manager Yamamoto of the General Affairs Department available?
+A：Huh? Isn't this clock off?
+B：Yeah. I set it five minutes fast on purpose. So I won't be late.
+A：But it's not very effective, is it? You're always cutting it close.
+B：Ah, sorry. I'll be careful.
+A：Shall we do one more final check?
+B：Yes. Just to be safe. If there's a mistake, we'd have to do it all over again.
+A：Right. Haste makes waste.
+B：Yes. Then shall we start by checking the list?
+A：Is the laundry dry?
+B：Hmm. I'm not sure. It's still a little damp.
+A：It's taking longer than I thought.
+B：Yeah. It depends on the temperature and humidity.
+A：Could you make the participant list by tomorrow?
+B：Oh, sorry. My application deadline is tomorrow, so if the day after tomorrow is OK...
+A：You look busy. Never mind then. I'll ask someone else.
+B：I'm sorry. Right now I'm so busy I'd take any help I can get.
+A：Good morning, section chief.
+B：Morning.
+A：Thank you for dinner yesterday. I enjoyed hearing all your stories.
+B：It was fun. Let's go again.

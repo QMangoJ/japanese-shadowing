@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createHybridStore } from "./hybridStorage";
 import { getSentenceInsight, type SentenceInsight } from "./sentenceAnalysis";
+import { beginnerSentenceCounts, groupBeginnerDialogue, groupNarratives, normalizeOcrBlock } from "./transcriptParsing";
 import "./App.css";
 
 type PracticeItem = {
@@ -37,15 +38,6 @@ const beginnerUnits: Unit[] = [
 	{ number: 6, start: 53, end: 56 },
 ];
 
-const sentenceCounts = [
-	...Array(9).fill(10), 6,
-	...Array(8).fill(10), 6, 6,
-	...Array(7).fill(10), 6, 5, 5,
-	...Array(8).fill(10), 6, 6,
-	...Array(12).fill(6),
-	...Array(4).fill(2),
-];
-
 const beginnerLessons: PracticeItem[] = Array.from({ length: 56 }, (_, position) => {
 	const index = position + 1;
 	const padded = String(index).padStart(2, "0");
@@ -54,7 +46,7 @@ const beginnerLessons: PracticeItem[] = Array.from({ length: 56 }, (_, position)
 		label: `Section ${padded}`,
 		audio: `/audio/${padded}-1.mp3`,
 		hasBookText: true,
-		sentenceCount: sentenceCounts[position],
+		sentenceCount: beginnerSentenceCounts[position],
 	};
 });
 
@@ -66,9 +58,17 @@ const intermediateUnits: Unit[] = [
 ];
 
 function intermediateSection(index: number) {
-	const ranges = [7, 15, 25, 37, 46, 54, 63];
 	if (index >= 65) return "上级";
-	return ranges.some((end) => index <= end) ? "Section 1 · 中级" : "Section 2 · 上级";
+	// Each Unit 1–7 has a Section 1 / Section 2 split; these are Section 1 end indexes.
+	const section1Ends = [7, 15, 25, 37, 46, 54, 63];
+	const unitEnds = [8, 17, 26, 38, 47, 56, 64];
+	const unitIndex = unitEnds.findIndex((end) => index <= end);
+	if (unitIndex < 0) return "上级";
+	return index <= section1Ends[unitIndex] ? "Section 1 · 中级" : "Section 2 · 上级";
+}
+
+function sleepDeadlineMs(minutes: number) {
+	return Date.now() + minutes * 60 * 1_000;
 }
 
 const intermediateLessons: PracticeItem[] = Array.from({ length: 74 }, (_, position) => {
@@ -123,18 +123,6 @@ function readFavorites(): Favorite[] {
 const speeds = [0.75, 1, 1.25, 1.5];
 const sleepTimerOptions = [10, 30, 60] as const;
 
-const dialogueLineCounts: Record<number, number[]> = {
-	4: [2, 2, 2, 2, 2, 2, 4, 2, 2, 2],
-	10: [4, 4, 4, 4, 4, 4],
-	19: [4, 4, 4, 4, 4, 4],
-	25: [2, 2, 2, 2, 2, 2, 2, 3, 2, 2],
-	40: [4, 4, 4, 4, 4, 4],
-	43: [4, 4, 4, 4, 4, 4],
-	45: [4, 4, 4, 4, 4, 4],
-	47: [4, 4, 4, 4, 4, 4],
-	54: [8, 10],
-};
-
 function formatTime(seconds: number) {
 	if (!Number.isFinite(seconds)) return "0:00";
 	const minutes = Math.floor(seconds / 60);
@@ -158,126 +146,6 @@ function audioSourcesForSection(course: Course, sectionIndex: number) {
 	return Array.from({ length: lesson.sentenceCount }, (_, position) => `/audio/${section}-${position + 1}.mp3`);
 }
 
-function isOcrNoise(line: string) {
-	return !line ||
-		/^[ぁ-ゖァ-ヺー・]+$/.test(line) ||
-		/^(?:Unit|section|[0-9①-⑳]+|[A-Za-z])$/.test(line);
-}
-
-function appendOcrContinuation(lines: string[], continuation: string) {
-	const previous = lines[lines.length - 1];
-	const text = continuation.trim();
-	if (!previous || !text) return;
-	if (/^[（(].*[）)]$/.test(previous)) {
-		lines.push(text);
-		return;
-	}
-	if (previous.endsWith("-")) {
-		lines[lines.length - 1] = `${previous.slice(0, -1)}${text}`;
-		return;
-	}
-	const needsSpace = /[A-Za-z0-9]$/.test(previous) && /^[A-Za-z0-9]/.test(text);
-	lines[lines.length - 1] = `${previous}${needsSpace ? " " : ""}${text}`;
-}
-
-function normalizeOcrBlock(raw: string) {
-	const normalized: string[] = [];
-	for (const untrimmed of raw.split("\n")) {
-		const line = untrimmed.trim();
-		if (/^[AB]$/i.test(line)) {
-			normalized.push(line.toUpperCase());
-			continue;
-		}
-		if (isOcrNoise(line)) continue;
-		// In the scanned intermediate book, a colon is sometimes recognized as
-		// i / I / | (for example, "Bi わかってる"). Treat those as speaker marks.
-		const speaker = line.match(/^.*([AB])\s*(?::|：|[iI|])\s*(.*)$/i);
-		if (speaker) {
-			const name = speaker[1].toUpperCase();
-			const text = speaker[2].trim();
-			normalized.push(text ? `${name}: ${text.replace(/太野/g, "大野")}` : name);
-			continue;
-		}
-		// Book headings are semantic paragraph boundaries; all other breaks are
-		// scan-layout wraps and should not appear as a new line on the site.
-		if (/^[（(].*[）)]$/.test(line)) {
-			normalized.push(line);
-			continue;
-		}
-		appendOcrContinuation(normalized, line);
-	}
-	return normalized.join("\n");
-}
-
-function extractSpokenLines(raw: string) {
-	const spoken: string[] = [];
-	let pendingSpeaker: string | null = null;
-	for (const untrimmed of raw.split("\n")) {
-		const line = untrimmed.trim();
-		if (isOcrNoise(line)) continue;
-		// OCR frequently prefixes a speaker marker with a page ornament (CB, QB,
-		// 2B, etc.). The final A/B immediately before the colon is authoritative.
-		const match = line.match(/^.*([AB])\s*(?::|：|[iI|])\s*(.*)$/i);
-		if (match) {
-			const text = match[2].trim();
-			if (text) {
-				pendingSpeaker = null;
-				spoken.push(`${match[1].toUpperCase()}: ${text.replace(/太野/g, "大野")}`);
-			}
-			else pendingSpeaker = match[1].toUpperCase();
-			continue;
-		}
-		if (/^[AB]$/i.test(line)) {
-			pendingSpeaker = line.toUpperCase();
-			continue;
-		}
-		if (pendingSpeaker && line) {
-			spoken.push(`${pendingSpeaker}: ${line.replace(/太野/g, "大野")}`);
-			pendingSpeaker = null;
-			continue;
-		}
-		const missingA = line.match(/^[:：]\s*(.+)$/);
-		const malformedB = line.match(/^(?:[2２]日|日)\s*[:：]\s*(.+)$/);
-		if ((malformedB && spoken.length > 0) || (missingA && (spoken.length > 0 || /[ぁ-んァ-ン一-龯]/.test(missingA[1])))) {
-			spoken.push(`${missingA ? "A" : "B"}: ${(missingA?.[1] ?? malformedB?.[1] ?? "").trim().replace(/太野/g, "大野")}`);
-			continue;
-		}
-		if (spoken.length > 0 && !/^[（(].*[）)]$/.test(line)) {
-			appendOcrContinuation(spoken, line);
-		}
-	}
-	return spoken;
-}
-
-function groupSentences(lines: string[], sentenceCount: number, sectionIndex: number) {
-	const override = dialogueLineCounts[sectionIndex];
-	const baseSize = Math.floor(lines.length / sentenceCount);
-	const remainder = lines.length % sentenceCount;
-	const groupSizes = override?.reduce((total, size) => total + size, 0) === lines.length ? override : (baseSize > 0
-		? Array.from({ length: sentenceCount }, (_, index) => baseSize + (index < remainder ? 1 : 0))
-		: null);
-	if (!groupSizes || groupSizes.reduce((total, size) => total + size, 0) !== lines.length) {
-		return Array.from({ length: sentenceCount }, () => "文本待校对");
-	}
-	let offset = 0;
-	return groupSizes.map((size) => {
-		const dialogue = lines.slice(offset, offset + size);
-		offset += size;
-		return dialogue.length > 0 ? dialogue.join("\n") : "文本待校对";
-	});
-}
-
-function groupNarratives(raw: string, sectionIndex: number) {
-	const headingPatterns = sectionIndex === 55
-		? [/^（(?:意見|Stating|意见)/, /^（(?:面接|At an Interview|面试)/]
-		: [/^（(?:旅先|What Happened|在旅行)/, /^（(?:映画|Impression|电影)/];
-	const lines = raw.split("\n").map((line) => line.trim());
-	const starts = headingPatterns.map((pattern) => lines.findIndex((line) => pattern.test(plainJapaneseText(line))));
-	if (starts.some((start) => start < 0)) return ["文本待校对", "文本待校对"];
-	return starts.map((start, index) => lines.slice(start, starts[index + 1] ?? lines.length)
-		.filter((line) => line && !/^[ぁ-ゖァ-ヺー・]+$/.test(line) && !/^(?:Unit|section|[0-9①-⑳]+)$/.test(line))
-		.join("\n"));
-}
 
 function FuriganaText({ text }: { text: string }) {
 	return <>{text.split("\n").map((line, lineIndex) => {
@@ -291,10 +159,6 @@ function FuriganaText({ text }: { text: string }) {
 			})}
 		</span>;
 	})}</>;
-}
-
-function plainJapaneseText(text: string) {
-	return text.replace(/\{\{(.+?)\|.*?\}\}/g, "$1");
 }
 
 function scrollTranscriptRowToReadingPosition(row: HTMLElement) {
@@ -333,17 +197,15 @@ function SentenceAnalysis({ insight, expanded, onToggle, compact = false }: { in
 			{expanded ? "收起单词与语法" : "查看单词与语法"}
 		</button>
 		{expanded && <div className="analysis-content">
-			<section className="analysis-section" aria-label="生词解析">
+			{insight.vocabulary.length > 0 && <section className="analysis-section" aria-label="生词解析">
 				<p className="analysis-label">生词</p>
-				{insight.vocabulary.length > 0 ? <>
-					<div className="word-pills">{insight.vocabulary.map((word) => <button key={word.term} type="button" className={selected?.term === word.term ? "selected" : ""} onClick={() => setSelectedWord(word.term)}>{word.term}</button>)}</div>
-					{selected && <p className="word-detail"><b>{selected.term}{selected.reading ? `（${selected.reading}）` : ""}</b>：{selected.meaning}<span>{selected.detail}</span></p>}
-				</> : <p className="analysis-empty">这句以基础表达为主；先结合译文跟读即可。</p>}
-			</section>
-			<section className="analysis-section" aria-label="语法解析">
+				<div className="word-pills">{insight.vocabulary.map((word) => <button key={word.term} type="button" className={selected?.term === word.term ? "selected" : ""} onClick={() => setSelectedWord(word.term)}>{word.term}</button>)}</div>
+				{selected && <p className="word-detail"><b>{selected.term}{selected.reading ? `（${selected.reading}）` : ""}</b>：{selected.meaning}<span>{selected.detail}</span></p>}
+			</section>}
+			{insight.grammar.length > 0 && <section className="analysis-section" aria-label="语法解析">
 				<p className="analysis-label">语法</p>
-				{insight.grammar.length > 0 ? <ul className="grammar-insights">{insight.grammar.map((item) => <li key={item.point}><b>{item.point}</b><span>{item.explanation}</span></li>)}</ul> : <p className="analysis-empty">本句是基础陈述或会话回应，重点留意语序和礼貌语气。</p>}
-			</section>
+				<ul className="grammar-insights">{insight.grammar.map((item, index) => <li key={`${index}-${item.point}`}><b>{item.point}</b><span>{item.explanation}</span></li>)}</ul>
+			</section>}
 		</div>}
 	</div>;
 }
@@ -395,7 +257,7 @@ function App() {
 	const unit = units.find((item) => item.number === selectedUnit) ?? units[0];
 	const nowPlayingText = transcript?.jp[currentSentence - 1] ?? "正在加载当前文案…";
 	const nowPlayingTranslation = transcript ? (translation === "zh" ? transcript.zh[currentSentence - 1] : transcript.en[currentSentence - 1]) : "";
-	const nowPlayingAnalysis = courseId === "beginner" ? getSentenceInsight(current.index, nowPlayingText) : null;
+	const nowPlayingAnalysis = courseId === "beginner" ? getSentenceInsight(current.index, currentSentence, nowPlayingText) : null;
 	const nowPlayingAnalysisKey = `${courseId}-${current.index}-${currentSentence}`;
 	const filteredLessons = useMemo(() => {
 		const normalizedQuery = query.trim().toLowerCase();
@@ -575,22 +437,20 @@ function App() {
 		void Promise.all(languagePaths.map((source) => fetch(source).then((response) => response.text())))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
-				const normalizedJapanese = normalizeOcrBlock(jp);
-				const normalizedChinese = normalizeOcrBlock(zh);
-				const normalizedEnglish = normalizeOcrBlock(en);
-				const japaneseLines = extractSpokenLines(normalizedJapanese);
-				const chineseLines = extractSpokenLines(normalizedChinese);
-				const englishLines = extractSpokenLines(normalizedEnglish);
-				const isNarrative = !course.trackAudio && current.index >= 55;
-				setTranscript({
-					jp: course.trackAudio ? [normalizedJapanese] : isNarrative ? groupNarratives(normalizedJapanese, current.index) : groupSentences(japaneseLines, current.sentenceCount, current.index),
-					zh: course.trackAudio ? [normalizedChinese] : isNarrative ? groupNarratives(normalizedChinese, current.index) : groupSentences(chineseLines, current.sentenceCount, current.index),
-					en: course.trackAudio ? [normalizedEnglish] : isNarrative ? groupNarratives(normalizedEnglish, current.index) : groupSentences(englishLines, current.sentenceCount, current.index),
-				});
+				if (course.trackAudio) {
+					setTranscript({ jp: [normalizeOcrBlock(jp)], zh: [normalizeOcrBlock(zh)], en: [normalizeOcrBlock(en)] });
+					return;
+				}
+				// Beginner transcripts are canonical text. Dialogue sections are split
+				// into per-clip cards with the same audio-verified group sizes for
+				// every language, so a translation can never drift onto another clip.
+				const isNarrative = current.index >= 55;
+				const group = (raw: string) => isNarrative ? groupNarratives(raw, current.index) : groupBeginnerDialogue(raw, current.index);
+				setTranscript({ jp: group(jp), zh: group(zh), en: group(en) });
 			})
 			.catch(() => { if (!disposed) setTranscript(null); });
 		return () => { disposed = true; };
-	}, [course.trackAudio, current.index, current.sentenceCount]);
+	}, [course.trackAudio, current.index]);
 
 	useEffect(() => {
 		const sourceCard = sourceCardRef.current;
@@ -654,7 +514,7 @@ function App() {
 			cancelSleepTimer();
 			return;
 		}
-		setSleepEndsAt(Date.now() + minutes * 60 * 1_000);
+		setSleepEndsAt(sleepDeadlineMs(minutes));
 		setSleepDurationMinutes(minutes);
 		setSleepRemainingSeconds(minutes * 60);
 	}
@@ -673,12 +533,19 @@ function App() {
 			}
 			if (event.code === "Space" && !(event.target instanceof HTMLInputElement)) {
 				event.preventDefault();
-				void togglePlayback();
+				const audio = audioRef.current;
+				if (!audio) return;
+				if (audio.paused) {
+					void audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+				} else {
+					audio.pause();
+					setIsPlaying(false);
+				}
 			}
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	});
+	}, [showTranscript]);
 
 	function clearTextSelection() {
 		window.getSelection()?.removeAllRanges();
@@ -1001,7 +868,7 @@ function App() {
 					{transcript ? <div className="transcript-list">
 						{transcript.jp.map((japanese, index) => {
 							const analysisKey = `${courseId}-${current.index}-${index + 1}`;
-							const insight = courseId === "beginner" ? getSentenceInsight(current.index, japanese) : null;
+							const insight = courseId === "beginner" ? getSentenceInsight(current.index, index + 1, japanese) : null;
 							return <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
 							<button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => toggleSentencePlayback(index + 1)} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}>
 								<span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b>
@@ -1024,7 +891,7 @@ function App() {
 					<div className="sheet-panel" onClick={(event) => event.stopPropagation()}><div className="sheet-heading"><div><p className="eyebrow">当前文本</p><h2>{current.label}</h2></div><button type="button" className="sheet-close" onClick={() => setShowTranscript(false)} aria-label="关闭全文">关闭</button></div>
 						<div className="transcript-list">{transcript.jp.map((japanese, index) => {
 							const analysisKey = `${courseId}-${current.index}-${index + 1}`;
-							const insight = courseId === "beginner" ? getSentenceInsight(current.index, japanese) : null;
+							const insight = courseId === "beginner" ? getSentenceInsight(current.index, index + 1, japanese) : null;
 							return <article key={index} data-sentence={index + 1} className={`transcript-row ${currentSentence === index + 1 ? "active" : ""}`}>
 								<button className={`sentence-play-button ${currentSentence === index + 1 && isPlaying ? "playing" : ""}`} onClick={() => toggleSentencePlayback(index + 1)} aria-label={currentSentence === index + 1 && isPlaying ? `暂停第 ${index + 1} 句` : `播放第 ${index + 1} 句`}><span>{String(index + 1).padStart(2, "0")}</span><b>{currentSentence === index + 1 && isPlaying ? "Ⅱ" : "▶"}</b></button>
 								<div className="transcript-text selectable-transcript"><p className="japanese-text"><FuriganaText text={japanese} /></p><p className="translation-text">{translation === "zh" ? transcript.zh[index] : transcript.en[index]}</p><SentenceAnalysis insight={insight} expanded={expandedAnalysisKey === analysisKey} onToggle={() => setExpandedAnalysisKey((key) => key === analysisKey ? null : analysisKey)} /></div>
