@@ -261,7 +261,7 @@ function App() {
 		? `/audio-intermediate/${String(current.index).padStart(2, "0")}.mp3`
 		: `/audio/${String(current.index).padStart(2, "0")}-${currentSentence}.mp3`;
 	const unit = units.find((item) => item.number === selectedUnit) ?? units[0];
-	const nowPlayingText = transcript?.jp[currentSentence - 1] ?? (transcriptError ? "文案加载失败，点下方「重新加载」" : "正在加载当前文案…");
+	const nowPlayingText = (transcript ? transcript.jp[Math.min(currentSentence, transcript.jp.length) - 1] : undefined) ?? (transcriptError ? "文案加载失败，点下方「重新加载」" : "正在加载当前文案…");
 	const nowPlayingTranslation = transcript ? (translation === "zh" ? transcript.zh[currentSentence - 1] : transcript.en[currentSentence - 1]) : "";
 	const nowPlayingAnalysis = courseId === "beginner" ? getSentenceInsight(current.index, currentSentence, nowPlayingText) : null;
 	const nowPlayingAnalysisKey = `${courseId}-${current.index}-${currentSentence}`;
@@ -369,7 +369,7 @@ function App() {
 			audioRef.current?.pause();
 			setCourseId(saved.courseId);
 			setCurrentIndex(saved.currentIndex);
-			setCurrentSentence(saved.currentSentence);
+			setCurrentSentence(Math.max(1, Math.min(saved.currentSentence, remoteLesson.sentenceCount)));
 			setCurrentTime(0);
 			setDuration(0);
 			setSelectedUnit(remoteUnit);
@@ -475,6 +475,26 @@ function App() {
 			controller.abort();
 		};
 	}, [course.trackAudio, current.index, transcriptAttempt]);
+
+	useEffect(() => {
+		// An installed iPhone web app can keep an old build in memory for days.
+		// When it comes back to the front, reload if a newer build is live.
+		const currentBundle = document.querySelector<HTMLScriptElement>('script[type="module"][src*="/assets/index-"]')?.src;
+		if (!currentBundle) return;
+		const bundleName = new URL(currentBundle).pathname;
+		const checkForUpdate = () => {
+			if (document.visibilityState !== "visible") return;
+			void fetch("/", { cache: "no-store" })
+				.then((response) => response.ok ? response.text() : "")
+				.then((html) => {
+					const live = html.match(/\/assets\/index-[\w-]+\.js/)?.[0];
+					if (live && live !== bundleName) window.location.reload();
+				})
+				.catch(() => undefined);
+		};
+		document.addEventListener("visibilitychange", checkForUpdate);
+		return () => document.removeEventListener("visibilitychange", checkForUpdate);
+	}, []);
 
 	useEffect(() => {
 		if (transcript) return;
@@ -689,14 +709,17 @@ function App() {
 	function resetLessonProgress() {
 		clearTextSelection();
 		resumeRef.current = null;
-		const audio = audioRef.current;
-		if (audio) {
-			audio.pause();
-			audio.currentTime = 0;
-		}
-		setIsPlaying(false);
 		setCurrentTime(0);
-		setCurrentSentence(1);
+		if (currentSentence !== 1) {
+			// Sentence 1 has its own audio file: switching loads it from 0 and plays.
+			setCurrentSentence(1);
+			requestPlayback();
+			return;
+		}
+		const audio = audioRef.current;
+		if (!audio) return;
+		audio.currentTime = 0;
+		void startPlayback();
 	}
 
 	function toggleSentencePlayback(sentence: number) {
