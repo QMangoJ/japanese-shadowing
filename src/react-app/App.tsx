@@ -238,6 +238,12 @@ function App() {
 	const [selectedUnit, setSelectedUnit] = useState(() => courses[initialProgress.courseId].units.find((item) => initialProgress.currentIndex + 1 >= item.start && initialProgress.currentIndex + 1 <= item.end)?.number ?? 1);
 	const [query, setQuery] = useState("");
 	const [transcript, setTranscript] = useState<Transcript | null>(null);
+	const [transcriptAttempt, setTranscriptAttempt] = useState(0);
+	const [transcriptError, setTranscriptError] = useState(false);
+	const retryTranscript = () => {
+		setTranscriptError(false);
+		setTranscriptAttempt((attempt) => attempt + 1);
+	};
 	const [screen, setScreen] = useState<"practice" | "guide" | "favorites">("practice");
 	const [desktopTranscriptHeight, setDesktopTranscriptHeight] = useState<number | null>(null);
 	const [showTranscript, setShowTranscript] = useState(false);
@@ -255,7 +261,7 @@ function App() {
 		? `/audio-intermediate/${String(current.index).padStart(2, "0")}.mp3`
 		: `/audio/${String(current.index).padStart(2, "0")}-${currentSentence}.mp3`;
 	const unit = units.find((item) => item.number === selectedUnit) ?? units[0];
-	const nowPlayingText = transcript?.jp[currentSentence - 1] ?? "正在加载当前文案…";
+	const nowPlayingText = transcript?.jp[currentSentence - 1] ?? (transcriptError ? "文案加载失败，点下方「重新加载」" : "正在加载当前文案…");
 	const nowPlayingTranslation = transcript ? (translation === "zh" ? transcript.zh[currentSentence - 1] : transcript.en[currentSentence - 1]) : "";
 	const nowPlayingAnalysis = courseId === "beginner" ? getSentenceInsight(current.index, currentSentence, nowPlayingText) : null;
 	const nowPlayingAnalysisKey = `${courseId}-${current.index}-${currentSentence}`;
@@ -368,6 +374,9 @@ function App() {
 			setDuration(0);
 			setSelectedUnit(remoteUnit);
 			setTranscript(null);
+			// The lesson may be unchanged, in which case the loader effect would not
+			// re-run and the cleared transcript would stay on "loading" forever.
+			retryTranscript();
 		});
 		return () => { disposed = true; };
 	}, []);
@@ -434,7 +443,13 @@ function App() {
 		const languagePaths = course.trackAudio
 			? ["jp-ruby", "zh", "en"].map((language) => `/transcripts/${folder}/${language}/${id}.txt`)
 			: ["jp-ruby", "zh", "en"].map((language) => `/transcripts/${language}/${id}.txt`);
-		void Promise.all(languagePaths.map((source) => fetch(source).then((response) => response.text())))
+		const controller = new AbortController();
+		const timeout = window.setTimeout(() => controller.abort(), 12000);
+		const load = (source: string) => fetch(source, { signal: controller.signal }).then((response) => {
+			if (!response.ok) throw new Error(`transcript ${response.status}`);
+			return response.text();
+		});
+		void Promise.all(languagePaths.map(load))
 			.then(([jp, zh, en]) => {
 				if (disposed) return;
 				if (course.trackAudio) {
@@ -448,9 +463,31 @@ function App() {
 				const group = (raw: string) => isNarrative ? groupNarratives(raw, current.index) : groupBeginnerDialogue(raw, current.index);
 				setTranscript({ jp: group(jp), zh: group(zh), en: group(en) });
 			})
-			.catch(() => { if (!disposed) setTranscript(null); });
-		return () => { disposed = true; };
-	}, [course.trackAudio, current.index]);
+			.catch(() => {
+				if (disposed) return;
+				setTranscript(null);
+				setTranscriptError(true);
+			})
+			.finally(() => window.clearTimeout(timeout));
+		return () => {
+			disposed = true;
+			window.clearTimeout(timeout);
+			controller.abort();
+		};
+	}, [course.trackAudio, current.index, transcriptAttempt]);
+
+	useEffect(() => {
+		if (transcript) return;
+		const retry = () => {
+			if (document.visibilityState === "visible") retryTranscript();
+		};
+		document.addEventListener("visibilitychange", retry);
+		window.addEventListener("online", retry);
+		return () => {
+			document.removeEventListener("visibilitychange", retry);
+			window.removeEventListener("online", retry);
+		};
+	}, [transcript]);
 
 	useEffect(() => {
 		const sourceCard = sourceCardRef.current;
@@ -649,6 +686,19 @@ function App() {
 		requestPlayback();
 	}
 
+	function resetLessonProgress() {
+		clearTextSelection();
+		resumeRef.current = null;
+		const audio = audioRef.current;
+		if (audio) {
+			audio.pause();
+			audio.currentTime = 0;
+		}
+		setIsPlaying(false);
+		setCurrentTime(0);
+		setCurrentSentence(1);
+	}
+
 	function toggleSentencePlayback(sentence: number) {
 		if (sentence === currentSentence) {
 			void togglePlayback();
@@ -813,6 +863,7 @@ function App() {
 								{isPlaying ? "Ⅱ" : "▶"}
 							</button>
 							<button className="round-button" onClick={() => moveSentence(1)} aria-label="下一句">↷</button>
+							<button className="round-button reset-button" onClick={resetLessonProgress} aria-label="重置到开头" title="重置到开头">⟲<small>重置</small></button>
 						</div>
 
 						<div className="player-options">
@@ -880,7 +931,7 @@ function App() {
 							</div>
 						</article>;
 						})}
-					</div> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
+					</div> : transcriptError ? <p className="transcript-loading">文案加载失败。<button type="button" onClick={() => retryTranscript()}>重新加载</button></p> : <p className="transcript-loading">正在加载该 section 的可选择文本…</p>}
 				</section>}
 				</section>
 				</>}
