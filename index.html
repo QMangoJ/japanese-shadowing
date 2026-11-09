@@ -7,6 +7,18 @@
 		<link rel="manifest" href="/site.webmanifest" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="theme-color" content="#1c5547" />
+		<script>
+			// Set the theme before first paint: the saved choice wins, otherwise
+			// follow the system preference. App.tsx keeps this in sync afterwards.
+			try {
+				var savedTheme = window.localStorage.getItem("kagekoe-shadowing-theme");
+				document.documentElement.dataset.theme = savedTheme === "light" || savedTheme === "dark"
+					? savedTheme
+					: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+			} catch (error) {
+				document.documentElement.dataset.theme = "light";
+			}
+		</script>
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-title" content="Shadowing" />
 		<title>日本語Shadowing</title>

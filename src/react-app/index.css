@@ -1,13 +1,79 @@
 :root {
+	color-scheme: light;
+
+	/* Theme tokens: every surface/text/border color in App.css and usage.css
+	   resolves through these, so dark mode is a pure token swap below. */
+	--bg: #f7f4ee;
+	--surface: #fffdf9;
+	--surface-raised: #ffffff;
+	--surface-translucent: rgba(255, 253, 249, .96);
+	--surface-tint: #f1eee6;
+	--surface-active: #fff8f4;
+	--tint-green: #ecf5ed;
+	--tint-green-soft: #f7fbf7;
+	--tint-orange: #fff0ea;
+	--tint-orange-soft: #fffaf7;
+	--label-bg: rgba(255, 255, 255, .9);
+	--text: #20352c;
+	--text-strong: #173c32;
+	--text-green: #2a624b;
+	--muted: #68766e;
+	--faint: #8b938c;
+	--border: #e7e1d8;
+	--border-soft: #eeeae2;
+	--border-warm: #ead4ca;
+	--border-green: #deeadf;
+	--border-hover: #9dc7ab;
+	--accent: #df704c;
+	--accent-strong: #b45236;
+	--accent-border: #e27b58;
+	--hero-shadow: #e4ddd0;
+	--scroll-thumb: #c6d5ca;
+	--scroll-track: #f2f4ef;
+	--card-shadow: 0 7px 22px rgba(42, 53, 46, .05);
+
 	font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", system-ui, sans-serif;
-	color: #20352c;
-	background: #f7f4ee;
+	color: var(--text);
+	background: var(--bg);
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 }
 
+[data-theme="dark"] {
+	color-scheme: dark;
+
+	--bg: #0f1512;
+	--surface: #171d19;
+	--surface-raised: #1f2621;
+	--surface-translucent: rgba(23, 29, 25, .94);
+	--surface-tint: #232b25;
+	--surface-active: #33231a;
+	--tint-green: #1d2b21;
+	--tint-green-soft: #1a251d;
+	--tint-orange: #33231a;
+	--tint-orange-soft: #2c2019;
+	--label-bg: rgba(15, 21, 18, .88);
+	--text: #dfe7df;
+	--text-strong: #eef4ee;
+	--text-green: #9fd3ae;
+	--muted: #9aa79d;
+	--faint: #7e8a80;
+	--border: #2e3831;
+	--border-soft: #262e29;
+	--border-warm: #4a3427;
+	--border-green: #2c4234;
+	--border-hover: #55755f;
+	--accent: #e07a54;
+	--accent-strong: #eda07e;
+	--accent-border: #e07a54;
+	--hero-shadow: #050807;
+	--scroll-thumb: #3a463d;
+	--scroll-track: #1a201c;
+	--card-shadow: 0 7px 22px rgba(0, 0, 0, .35);
+}
+
 html { scroll-behavior: smooth; }
-body { min-width: 320px; min-height: 100vh; margin: 0; }
+body { min-width: 320px; min-height: 100vh; margin: 0; background: var(--bg); }
 a { text-decoration: none; }
-button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid #e57b57; outline-offset: 3px; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }

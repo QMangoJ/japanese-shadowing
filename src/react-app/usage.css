@@ -4,10 +4,10 @@
 	bottom: 18px;
 	z-index: 30;
 	padding: 0.48rem 0.8rem;
-	border: 1px solid #dfe5df;
+	border: 1px solid var(--border);
 	border-radius: 999px;
-	background: #fffdf9;
-	color: #235a48;
+	background: var(--surface);
+	color: var(--text-green);
 	font-size: 0.78rem;
 	font-weight: 700;
 	box-shadow: 0 8px 20px rgba(42, 53, 46, 0.12);
@@ -27,12 +27,12 @@
 	overflow: auto;
 	padding: 22px 20px;
 	border-radius: 18px;
-	background: #fffdf9;
-	color: #173c32;
+	background: var(--surface);
+	color: var(--text-strong);
 }
 .usage-dock-kicker {
 	margin: 0 0 6px;
-	color: #a16149;
+	color: var(--accent-strong);
 	font-size: 0.75rem;
 	font-weight: 700;
 	letter-spacing: 0.08em;
@@ -44,7 +44,7 @@
 }
 .usage-dock-card p {
 	margin: 0 0 12px;
-	color: #5d675f;
+	color: var(--muted);
 	font-size: 0.92rem;
 	line-height: 1.65;
 }
@@ -63,9 +63,9 @@
 	justify-content: space-between;
 	gap: 12px;
 	padding: 12px;
-	border: 1px solid #e7e1d8;
+	border: 1px solid var(--border);
 	border-radius: 12px;
-	background: #fff;
+	background: var(--surface-raised);
 }
 .usage-dock-stats {
 	display: grid;
@@ -79,11 +79,11 @@
 }
 .usage-dock-stats span,
 .usage-dock-days span {
-	color: #6e786f;
+	color: var(--muted);
 	font-size: 0.78rem;
 }
 .usage-dock-days div.today {
-	border-color: #397354;
+	border-color: var(--border-hover);
 }
 .usage-dock-close {
 	padding: 0.55rem 0.9rem;

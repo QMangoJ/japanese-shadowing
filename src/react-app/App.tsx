@@ -83,6 +83,20 @@ const courses: Record<CourseId, Course> = {
 
 const progressStorageKey = "kagekoe-shadowing-progress";
 const favoritesStorageKey = "kagekoe-shadowing-favorites";
+const themeStorageKey = "kagekoe-shadowing-theme";
+
+type Theme = "light" | "dark";
+
+function readInitialTheme(): Theme {
+	if (typeof window === "undefined") return "light";
+	try {
+		const saved = window.localStorage.getItem(themeStorageKey);
+		if (saved === "light" || saved === "dark") return saved;
+	} catch {
+		// Storage unavailable (private mode etc.): fall through to the system preference.
+	}
+	return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
 const fallbackProgress: SavedProgress = { courseId: "beginner", currentIndex: 0, currentSentence: 1, currentTime: 0 };
 
@@ -218,6 +232,22 @@ function App() {
 	const favoriteActionPointerRef = useRef(false);
 	const [initialProgress] = useState(readSavedProgress);
 	const resumeRef = useRef<SavedProgress | null>(initialProgress.currentTime > 0 ? initialProgress : null);
+	const [theme, setTheme] = useState<Theme>(readInitialTheme);
+
+	useEffect(() => {
+		document.documentElement.dataset.theme = theme;
+		document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0f1512" : "#1c5547");
+	}, [theme]);
+
+	function toggleTheme() {
+		const next: Theme = theme === "dark" ? "light" : "dark";
+		setTheme(next);
+		try {
+			window.localStorage.setItem(themeStorageKey, next);
+		} catch {
+			// Storage unavailable: the toggle still applies for this session.
+		}
+	}
 	const [courseId, setCourseId] = useState<CourseId>(initialProgress.courseId);
 	const [currentIndex, setCurrentIndex] = useState(initialProgress.currentIndex);
 	const [currentSentence, setCurrentSentence] = useState(initialProgress.currentSentence);
@@ -706,20 +736,21 @@ function App() {
 		requestPlayback();
 	}
 
-	function resetLessonProgress() {
+	function resetCurrentAudioProgress() {
+		// Only the currently loaded audio restarts: seek it to 0 and zero its
+		// saved position (the save effect persists currentTime once it becomes
+		// 0). The current lesson/sentence, every other audio's saved state and
+		// the playback mode (speed/loop/sleep timer) are all left untouched.
 		clearTextSelection();
 		resumeRef.current = null;
 		setCurrentTime(0);
-		if (currentSentence !== 1) {
-			// Sentence 1 has its own audio file: switching loads it from 0 and plays.
-			setCurrentSentence(1);
-			requestPlayback();
-			return;
-		}
 		const audio = audioRef.current;
 		if (!audio) return;
+		const wasPlaying = !audio.paused;
 		audio.currentTime = 0;
-		void startPlayback();
+		// Seeking does not pause, but re-assert playback if it was playing so
+		// the audio restarts from the beginning instead of staying stalled.
+		if (wasPlaying) void startPlayback();
 	}
 
 	function toggleSentencePlayback(sentence: number) {
@@ -794,6 +825,7 @@ function App() {
 					<span>日本語Shadowing</span>
 				</button>
 				<div className="topbar-actions">
+					<button className="guide-link theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"} title={theme === "dark" ? "切换到浅色模式" : "切换到深色模式"}>{theme === "dark" ? "☀ 浅色" : "☾ 深色"}</button>
 					<button className="guide-link favorite-link" onClick={() => { clearTextSelection(); setShowTranscript(false); setScreen("favorites"); }} aria-current={screen === "favorites" ? "page" : undefined}>收藏{favorites.length ? ` ${favorites.length}` : ""}</button>
 					<button className="guide-link" onClick={() => { clearTextSelection(); setShowTranscript(false); setScreen("guide"); }} aria-current={screen === "guide" ? "page" : undefined}>使用方法</button>
 				</div>
@@ -886,7 +918,7 @@ function App() {
 								{isPlaying ? "Ⅱ" : "▶"}
 							</button>
 							<button className="round-button" onClick={() => moveSentence(1)} aria-label="下一句">↷</button>
-							<button className="round-button reset-button" onClick={resetLessonProgress} aria-label="重置到开头" title="重置到开头">⟲<small>重置</small></button>
+							<button className="round-button reset-button" onClick={resetCurrentAudioProgress} aria-label="重置当前音频进度" title="重置当前音频进度">⟲<small>重置</small></button>
 						</div>
 
 						<div className="player-options">
