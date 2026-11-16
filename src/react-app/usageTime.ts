@@ -17,7 +17,7 @@ export type UsageSnapshot = {
 	kind: UsageKind;
 };
 
-type LocalUsage = { days: DayMap; synced: DayMap };
+type LocalUsage = { days: DayMap; device: string };
 
 export function jstDayKey(ms: number): string {
 	return new Intl.DateTimeFormat("en-CA", {
@@ -86,22 +86,12 @@ export function addSecondsAcrossDays(days: DayMap, startMs: number, endMs: numbe
 	return next;
 }
 
-export function pendingDelta(local: DayMap, synced: DayMap, remote: DayMap): DayMap {
+/** Display: server total minus what this device already uploaded, plus this device's live total. */
+export function combineDays(remote: DayMap, mine: DayMap, localDays: DayMap): DayMap {
 	const out: DayMap = {};
-	for (const day of Object.keys(local)) {
-		const pending = Math.max(0, (local[day] || 0) - (synced[day] || 0));
-		const room = Math.max(0, USAGE_DAY_CAP_SEC - (remote[day] || 0));
-		const send = Math.min(pending, room);
-		if (send > 0) out[day] = send;
-	}
-	return out;
-}
-
-export function displayDays(remote: DayMap, local: DayMap, synced: DayMap): DayMap {
-	const out: DayMap = {};
-	for (const day of new Set([...Object.keys(remote), ...Object.keys(local)])) {
-		const pending = Math.max(0, (local[day] || 0) - (synced[day] || 0));
-		const total = (remote[day] || 0) + pending;
+	for (const day of new Set([...Object.keys(remote), ...Object.keys(localDays)])) {
+		const others = Math.max(0, (remote[day] || 0) - (mine[day] || 0));
+		const total = Math.max(remote[day] || 0, others + (localDays[day] || 0));
 		if (total > 0) out[day] = Math.min(USAGE_DAY_CAP_SEC, total);
 	}
 	return out;
@@ -117,7 +107,8 @@ const EMPTY_SNAPSHOT: UsageSnapshot = { days: {}, signedIn: false, synced: false
 
 let kind: UsageKind = "account";
 let remote: DayMap = {};
-let local: LocalUsage = { days: {}, synced: {} };
+let remoteMine: DayMap = {};
+let local: LocalUsage = { days: {}, device: "" };
 let signedIn = false;
 let lastSyncOk = false;
 let audioPlaying = false;
@@ -127,11 +118,26 @@ let snapshot: UsageSnapshot = EMPTY_SNAPSHOT;
 let timer = 0;
 let started = 0;
 let syncing: Promise<void> | null = null;
+// Sync cadence (Daniel's ruling, 2026-11-15, same as the learning app): local persistence
+// stays high-frequency — accrued seconds are committed to local storage every few seconds —
+// but the server is only touched when the page is shown (open / return to foreground) or
+// hidden (the keepalive flush below). There is deliberately no periodic in-session upload:
+// visibility transitions are frequent enough on mobile, and each avoided upload saves KV writes.
+let lastSyncOkAt = 0;
+const SYNC_GET_FRESH_MS = 5 * 60_000;
+const SYNC_FAILURE_COOLDOWN_MS = 60 * 60_000;
+const SYNC_NETWORK_RETRY_MS = 60_000;
+const FAILED_KEY = "usage-sync-failed";
+const DEVICE = /^[a-z0-9]{6,40}$/;
 const listeners = new Set<() => void>();
 const tabId = `t${Math.random().toString(36).slice(2)}`;
 
+function newDevice(): string {
+	return `d${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`.slice(0, 40);
+}
+
 function emptyLocal(): LocalUsage {
-	return { days: {}, synced: {} };
+	return { days: {}, device: newDevice() };
 }
 
 function loadLocal(): LocalUsage {
@@ -139,7 +145,8 @@ function loadLocal(): LocalUsage {
 	try {
 		const raw = JSON.parse(localStorage.getItem(LOCAL_KEY) || "");
 		if (!raw || typeof raw !== "object") return emptyLocal();
-		return { days: sanitizeDays(raw.days), synced: sanitizeDays(raw.synced) };
+		const device = typeof raw.device === "string" && DEVICE.test(raw.device) ? raw.device : newDevice();
+		return { days: sanitizeDays(raw.days), device };
 	} catch {
 		return emptyLocal();
 	}
@@ -155,7 +162,7 @@ function saveLocal() {
 }
 
 function publish() {
-	snapshot = { days: displayDays(remote, local.days, local.synced), signedIn, synced: lastSyncOk, kind };
+	snapshot = { days: combineDays(remote, remoteMine, local.days), signedIn, synced: lastSyncOk, kind };
 	for (const listener of listeners) listener();
 }
 
@@ -223,12 +230,9 @@ function tick() {
 	}
 }
 
-function onOnline() {
-	void syncNow();
-}
-
 function onPageHide() {
 	if (!audioPlaying) closeSegment();
+	flushUpload();
 }
 
 function credentials(): RequestCredentials {
@@ -251,10 +255,112 @@ async function refreshAccount() {
 	publish();
 }
 
-async function doSync() {
+function readStore(key: string): string | null {
+	try {
+		return typeof localStorage === "undefined" ? null : localStorage.getItem(key);
+	} catch {
+		return null;
+	}
+}
+
+function writeStore(key: string, value: string | null) {
+	try {
+		if (typeof localStorage === "undefined") return;
+		if (value == null) localStorage.removeItem(key);
+		else localStorage.setItem(key, value);
+	} catch {
+		/* ignore */
+	}
+}
+
+type SyncFailure = { at: number; status: number };
+const memoryFailures = new Map<string, SyncFailure>();
+
+function parseFailure(raw: string | null): SyncFailure | null {
+	if (!raw) return null;
+	const [tsRaw, statusRaw] = raw.split(":");
+	const at = Number(tsRaw);
+	if (!Number.isFinite(at) || at <= 0) return null;
+	// Entries written by older clients stored only the timestamp; treat them as
+	// server failures (long cooldown).
+	const status = statusRaw === undefined ? -1 : Number(statusRaw);
+	return { at, status: Number.isFinite(status) ? status : -1 };
+}
+
+function lastFailure(): SyncFailure | null {
+	const mem = memoryFailures.get(kind);
+	const stored = parseFailure(readStore(`${FAILED_KEY}:${kind}`));
+	if (!mem) return stored;
+	if (!stored) return mem;
+	return mem.at >= stored.at ? mem : stored;
+}
+
+/**
+ * Graded failure backoff (same policy as the learning app): a server rejection
+ * (429/5xx) reached the server and may have cost KV quota, so it keeps the long
+ * cooldown; a network error (status 0) never reached the server, costs no
+ * quota, and retries after a short floor. Local data is never cleared.
+ */
+function canAttemptSync(now = Date.now()): boolean {
+	const failure = lastFailure();
+	if (!failure) return true;
+	if (failure.at > now) return true;
+	const floor = failure.status === 0 ? SYNC_NETWORK_RETRY_MS : SYNC_FAILURE_COOLDOWN_MS;
+	return now - failure.at >= floor;
+}
+
+/** Record an attempt's outcome: `status` 0 means a network error. Any non-2xx starts the cooldown. */
+function noteSyncResult(status: number, now = Date.now()) {
+	const ok = status >= 200 && status < 300;
+	if (!ok && status === 0) {
+		// Several callers note the HTTP status and then throw into a catch that
+		// notes a network error for the same attempt. A genuine network error
+		// means no response arrived, so it can never follow a server rejection
+		// within the same few seconds; keep the server record (and its
+		// quota-protecting cooldown) instead of reclassifying it as transient.
+		const existing = lastFailure();
+		if (existing && existing.status !== 0 && now - existing.at < 5000) return;
+	}
+	if (ok) memoryFailures.delete(kind);
+	else memoryFailures.set(kind, { at: now, status });
+	writeStore(`${FAILED_KEY}:${kind}`, ok ? null : `${now}:${status}`);
+}
+
+function withDevice(endpoint: string): string {
+	return `${endpoint}${endpoint.includes("?") ? "&" : "?"}device=${local.device}`;
+}
+
+function readRemote(body: { days?: unknown; mine?: unknown }) {
+	remote = sanitizeDays(body.days);
+	remoteMine = sanitizeDays(body.mine);
+}
+
+// A `lite` POST answers with the posted days only; fold them into what the GET
+// returned. Per-day values only ever grow (the server keeps the max per
+// device), so merging with max can never make the displayed totals regress.
+function mergeRemote(body: { days?: unknown; mine?: unknown }) {
+	const days = sanitizeDays(body.days);
+	const mine = sanitizeDays(body.mine);
+	for (const [day, sec] of Object.entries(days)) remote[day] = Math.max(remote[day] || 0, sec);
+	for (const [day, sec] of Object.entries(mine)) remoteMine[day] = Math.max(remoteMine[day] || 0, sec);
+}
+
+/** Absolute per-day totals the server is behind on for this device. */
+function pendingTotals(): DayMap {
+	const totals: DayMap = {};
+	for (const [day, sec] of Object.entries(local.days)) if (sec > (remoteMine[day] || 0)) totals[day] = sec;
+	return totals;
+}
+
+async function doSync(force = false) {
 	if (kind === "account" && !signedIn) return;
-	if (typeof fetch === "undefined") return;
-	const endpoint = usageEndpoint(kind);
+	if (typeof fetch === "undefined" || !local.device) return;
+	// Non-forced runs (foreground return) only touch the network when there is
+	// something to upload or the server copy is stale; the failure cooldown
+	// still gates every attempt.
+	if (!force && !Object.keys(pendingTotals()).length && Date.now() - lastSyncOkAt < SYNC_GET_FRESH_MS) return;
+	if (!canAttemptSync()) return;
+	const endpoint = withDevice(usageEndpoint(kind));
 	try {
 		const got = await fetch(endpoint, { credentials: credentials(), cache: "no-store" });
 		if (got.status === 401) {
@@ -264,39 +370,73 @@ async function doSync() {
 			return;
 		}
 		if (!got.ok) {
+			noteSyncResult(got.status);
 			lastSyncOk = false;
 			publish();
 			return;
 		}
-		const body = (await got.json()) as { days?: unknown };
-		remote = sanitizeDays(body.days);
-		const delta = pendingDelta(local.days, local.synced, remote);
-		if (Object.keys(delta).length && claimLock()) {
-			const posted = await fetch(endpoint, {
+		readRemote((await got.json()) as { days?: unknown; mine?: unknown });
+		// Upload absolute totals only for days the server is behind on; nothing changed means no write.
+		const totals = pendingTotals();
+		if (Object.keys(totals).length && claimLock()) {
+			// `lite=1`: the server skips list() and answers with the posted days only.
+			const posted = await fetch(`${endpoint}&lite=1`, {
 				method: "POST",
 				credentials: credentials(),
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ days: delta }),
+				body: JSON.stringify({ device: local.device, totals }),
 			});
+			noteSyncResult(posted.status);
 			if (!posted.ok) {
 				lastSyncOk = false;
 				publish();
 				return;
 			}
-			const saved = (await posted.json()) as { days?: unknown };
-			remote = sanitizeDays(saved.days);
-			const synced = { ...local.synced };
-			for (const [day, sent] of Object.entries(delta)) {
-				synced[day] = Math.min(local.days[day] || 0, (synced[day] || 0) + sent);
-			}
-			local = { ...local, synced };
-			saveLocal();
-		}
+			mergeRemote((await posted.json()) as { days?: unknown; mine?: unknown });
+		} else noteSyncResult(got.status);
 		lastSyncOk = true;
+		lastSyncOkAt = Date.now();
 	} catch {
+		noteSyncResult(0);
 		lastSyncOk = false;
 	}
 	publish();
+}
+
+/**
+ * Last-chance upload when the page is being hidden or unloaded: POST any
+ * totals the server is behind on with keepalive so the browser finishes the
+ * request while the page goes away. This is what saves a session's time when
+ * iOS later discards the page (or its storage) before the next page open. The
+ * server merge is max-per-device, so racing a normal sync is harmless.
+ */
+function flushUpload() {
+	if (typeof fetch === "undefined" || !local.device) return;
+	if (kind === "account" && !signedIn) return;
+	const totals = pendingTotals();
+	if (!Object.keys(totals).length) return;
+	if (!claimLock()) return;
+	const endpoint = withDevice(usageEndpoint(kind));
+	try {
+		void fetch(`${endpoint}&lite=1`, {
+			method: "POST",
+			credentials: credentials(),
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ device: local.device, totals }),
+			keepalive: true,
+		})
+			.then(async (res) => {
+				noteSyncResult(res.status);
+				if (!res.ok) return;
+				mergeRemote((await res.json()) as { days?: unknown; mine?: unknown });
+				lastSyncOk = true;
+				lastSyncOkAt = Date.now();
+				publish();
+			})
+			.catch(() => noteSyncResult(0));
+	} catch {
+		/* The page is going away; the next successful sync reconciles from local state. */
+	}
 }
 
 function syncNow() {
@@ -315,9 +455,16 @@ function onActivity() {
 
 function onVisibility() {
 	const now = Date.now();
-	if (typeof document !== "undefined" && document.hidden && !audioPlaying) closeSegment(now);
-	else if (counting(now) && segmentStart == null) segmentStart = now;
-	if (typeof document !== "undefined" && !document.hidden) void syncNow();
+	if (typeof document !== "undefined" && document.hidden) {
+		if (!audioPlaying) closeSegment(now);
+		flushUpload();
+		return;
+	}
+	if (counting(now) && segmentStart == null) segmentStart = now;
+	// Returning to the app is the natural moment to heal a sync that failed
+	// earlier in the session (e.g. a network blip at page open); doSync gates
+	// itself on need and cooldown.
+	void syncNow();
 }
 
 function onStorage(event: StorageEvent) {
@@ -347,7 +494,10 @@ export function setUsageAudioPlaying(playing: boolean) {
 export function refreshUsageAccount(signedInNow?: boolean) {
 	if (typeof signedInNow === "boolean") {
 		signedIn = signedInNow;
-		if (!signedIn) remote = {};
+		if (!signedIn) {
+			remote = {};
+			remoteMine = {};
+		}
 		publish();
 		if (signedIn) void syncNow();
 		return;
@@ -360,6 +510,7 @@ export function startUsageTracker(nextKind: UsageKind = "account"): () => void {
 	kind = nextKind;
 	if (started === 1 && typeof window !== "undefined") {
 		local = loadLocal();
+		saveLocal();
 		lastInput = Date.now();
 		publish();
 		const opts = { passive: true } as AddEventListenerOptions;
@@ -368,7 +519,6 @@ export function startUsageTracker(nextKind: UsageKind = "account"): () => void {
 		document.addEventListener("scroll", onActivity, { passive: true, capture: true });
 		window.addEventListener("touchstart", onActivity, opts);
 		document.addEventListener("visibilitychange", onVisibility);
-		window.addEventListener("online", onOnline);
 		window.addEventListener("pagehide", onPageHide);
 		window.addEventListener("storage", onStorage);
 		timer = window.setInterval(tick, 1000);
@@ -385,7 +535,6 @@ export function startUsageTracker(nextKind: UsageKind = "account"): () => void {
 		document.removeEventListener("scroll", onActivity, true);
 		window.removeEventListener("touchstart", onActivity);
 		document.removeEventListener("visibilitychange", onVisibility);
-		window.removeEventListener("online", onOnline);
 		window.removeEventListener("pagehide", onPageHide);
 		window.removeEventListener("storage", onStorage);
 		audioPlaying = false;
